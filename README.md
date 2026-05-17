@@ -2,7 +2,7 @@
 
 RSVP Nano is an open-source ESP32-S3 reading device that shows text one word at a time using RSVP, Rapid Serial Visual Presentation. It is designed for small screens, SD card libraries, fast reading, and a simple browser-first workflow for converting and uploading books.
 
-This README is written for the current release, `v0.0.4`.
+This README is written for the current release, `v0.0.5`.
 
 ## What You Need
 
@@ -28,7 +28,7 @@ Use the hosted flasher:
 
 Open it in Chrome or Edge on desktop, connect the device over USB, and follow the installer prompts. The flasher uses ESP Web Tools and Web Serial, so it must run from HTTPS or localhost.
 
-The hosted flasher installs the latest published GitHub Release. For `v0.0.4`, that means the release build includes the firmware, SD card, RSS, companion sync, web companion, and settings work described below.
+The hosted flasher installs the latest published GitHub Release. For `v0.0.5`, that means the release build includes the firmware, SD card, RSS, companion sync, web companion, and settings work described below.
 
 ## Prepare The SD Card
 
@@ -46,7 +46,7 @@ Create these folders on the card:
 /config
 ```
 
-Books go in `/books/books`. Articles go in `/books/articles`. Older libraries with files directly inside `/books` are still read for compatibility, but the split folders are the recommended layout for `v0.0.4`.
+Books go in `/books/books`. Articles go in `/books/articles`. Older libraries with files directly inside `/books` are still read for compatibility, but the split folders are the recommended layout for `v0.0.5`.
 
 If the device cannot see the SD card, the most common causes are:
 
@@ -145,7 +145,7 @@ You can set Wi-Fi credentials from:
 
 RSS feeds are managed from the web companion or the iPhone app, then checked from the device menu with `RSS feeds`. New articles are saved into `/books/articles`.
 
-RSS support in `v0.0.4` includes:
+RSS support in `v0.0.5` includes:
 
 - RSS and Atom feed parsing.
 - Redirect handling for common `301`, `302`, `303`, `307`, and `308` responses.
@@ -310,7 +310,7 @@ Run `SD card check` if books or articles do not appear. It checks whether the ca
 
 ## Character Support
 
-`v0.0.4` improves support for long books and unsupported characters. Common punctuation is normalized, and many accented Latin characters render directly or fall back to readable plain Latin equivalents.
+`v0.0.5` improves support for long books and unsupported characters. Common punctuation is normalized, and many accented Latin characters render directly or fall back to readable plain Latin equivalents.
 
 The current renderer is best for English and European Latin-script languages. Complex scripts still need additional font and shaping work.
 
@@ -369,7 +369,7 @@ Open the Xcode project from that folder when installing the app locally.
 To export browser-flasher and OTA firmware assets for a release:
 
 ```bash
-python3 tools/export_web_firmware.py --version v0.0.4
+python3 tools/export_web_firmware.py --version v0.0.5
 ```
 
 That writes:
@@ -382,7 +382,7 @@ web/firmware/manifest.json
 
 ## Project Status
 
-`v0.0.4` is the first release that brings the firmware, SD card workflow, RSS feeds, iPhone companion work, and web companion work together into one release-ready experience.
+`v0.0.5` builds on the first public firmware release with the long-book reading system, safer SD-card handling, clearer RSS and loading feedback, improved Latin-script support, reader chrome toggles, battery protection, and standby display options.
 
 The next areas of work are:
 
