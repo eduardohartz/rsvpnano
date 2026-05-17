@@ -90,6 +90,8 @@ Use this layout:
 
 On first open, the firmware may create `.ridx` and `.rdat` sidecar files next to a book. These are the SD-backed word index and normalized word data used for long books. Leave them on the card; they are rebuilt automatically if the source book changes.
 
+Large books now load through the same indexed reading path as smaller books, with progress messages while indexes and time estimates are prepared. If a book cannot be prepared, the device should return to the menu with a readable reason instead of silently failing.
+
 ### Option 2: USB Transfer Mode
 
 From the device:
@@ -169,7 +171,7 @@ OTA updates use GitHub Releases. Open `Settings -> Firmware update` on the devic
 - `PWR` hold from the normal reader or main menu: power off.
 - `BOOT` short press: cycle brightness.
 - `BOOT` hold: cycle display theme.
-- Press `PWR` + `BOOT` together: enter standby with the pixel-level Game of Life screen saver. Press either button to wake.
+- Press `PWR` + `BOOT` together: enter standby. Press either button to wake after the short standby grace period.
 
 The goal is simple: use `PWR` as menu, back, exit, and power. Use `BOOT` for quick display changes.
 
@@ -234,6 +236,7 @@ Settings are grouped by how people actually use the device.
 - Brightness.
 - Footer and battery label behavior.
 - Optional battery, chapter, and book percentage labels while actively reading.
+- Standby display mode: Life, Maze, Voronoi, or Screen off.
 - Language.
 
 `Typography` includes:
@@ -254,6 +257,7 @@ Settings are grouped by how people actually use the device.
 - Complexity delay.
 - Punctuation delay.
 - RSVP or scroll reading behavior.
+- Reading speeds from 10 WPM upward, with 10 WPM steps below 100 WPM.
 - Instant pause or sentence-end pause.
 - Pacing reset.
 
@@ -292,6 +296,8 @@ The device shows live progress as it checks feeds. Saved articles appear in `Art
 
 If a feed cannot be downloaded, the reader shows a plain-English reason such as `Feed not found`, `Site blocked reader`, or `Site took too long`.
 
+RSS checks can continue in the background, while installable firmware updates still ask for confirmation before the device changes itself.
+
 ### Focus Timer
 
 The Focus Timer uses the device orientation to guide work and break blocks.
@@ -308,9 +314,11 @@ Touch-and-hold during an active timer cancels the current timer block.
 
 Run `SD card check` if books or articles do not appear. It checks whether the card mounts, whether it can write, and whether the expected library folders exist.
 
+If the old folder layout needs repair, the device now asks before changing the card.
+
 ## Character Support
 
-`v0.0.5` improves support for long books and unsupported characters. Common punctuation is normalized, and many accented Latin characters render directly or fall back to readable plain Latin equivalents.
+`v0.0.5` improves support for long books and unsupported characters. Common punctuation is normalized, ellipses and hyphenated sentence breaks are handled more carefully, and many accented Latin characters render directly or fall back to readable plain Latin equivalents.
 
 The current renderer is best for English and European Latin-script languages. Complex scripts still need additional font and shaping work.
 
