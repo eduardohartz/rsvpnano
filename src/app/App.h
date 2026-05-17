@@ -2,6 +2,9 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
 #include <vector>
 
 #include "app/AppState.h"
@@ -36,6 +39,23 @@ class App {
   void update(uint32_t nowMs);
 
  private:
+  static constexpr size_t kOtaVersionLabelMax = 32;
+  static constexpr size_t kOtaSummaryLabelMax = 40;
+  static constexpr size_t kOtaDetailLabelMax = 96;
+
+  struct OtaCheckResult {
+    OtaUpdater::ResultCode code = OtaUpdater::ResultCode::MetadataFailed;
+    char currentVersion[kOtaVersionLabelMax] = {};
+    char latestVersion[kOtaVersionLabelMax] = {};
+    char summary[kOtaSummaryLabelMax] = {};
+    char detail[kOtaDetailLabelMax] = {};
+  };
+
+  struct OtaCheckTaskParams {
+    OtaUpdater::Config config;
+    QueueHandle_t resultQueue = nullptr;
+  };
+
   struct PausedTouchSession {
     bool active = false;
     uint16_t startX = 0;
@@ -69,6 +89,8 @@ class App {
     BookPicker,
     ChapterPicker,
     RestartConfirm,
+    SdCardRepairConfirm,
+    UpdateConfirm,
     FocusTimerGenres,
     FocusTimerSession,
   };
@@ -200,6 +222,12 @@ class App {
   void rebuildSettingsMenuItems();
   void applyPacingSettings();
   void maybeAutoCheckForUpdates(uint32_t nowMs);
+  bool startBackgroundOtaCheck(const OtaUpdater::Config &config);
+  static void otaCheckTask(void *params);
+  void pollOtaCheckResult(uint32_t nowMs);
+  void maybeOpenUpdateConfirm(uint32_t nowMs);
+  bool updateConfirmCanOpen() const;
+  bool blockNetworkActionForOtaCheck(const String &title, uint32_t nowMs);
   void runFirmwareUpdate(const OtaUpdater::Config &config, bool automatic, uint32_t nowMs);
   void runRssFeedCheck(uint32_t nowMs);
   OtaUpdater::Config preferredOtaConfig();
@@ -238,7 +266,12 @@ class App {
   void selectChapterPickerItem(uint32_t nowMs);
   void openRestartConfirm();
   void selectRestartConfirmItem(uint32_t nowMs);
+  void openSdCardRepairConfirm();
+  void selectSdCardRepairConfirmItem(uint32_t nowMs);
+  void runSdCardRepair(uint32_t nowMs);
   void runSdCardCheck(uint32_t nowMs);
+  void openUpdateConfirm();
+  void selectUpdateConfirmItem(uint32_t nowMs);
   void enterCompanionSync(uint32_t nowMs);
   void updateCompanionSync(uint32_t nowMs);
   void exitCompanionSync(uint32_t nowMs);
@@ -269,6 +302,8 @@ class App {
   void renderBookPicker();
   void renderChapterPicker();
   void renderRestartConfirm();
+  void renderSdCardRepairConfirm();
+  void renderUpdateConfirm();
   void renderFocusTimerGenres();
   void renderFocusTimerSession();
   void renderActiveReader(uint32_t nowMs);
@@ -361,6 +396,8 @@ class App {
   size_t bookPickerSelectedIndex_ = 0;
   size_t chapterPickerSelectedIndex_ = 0;
   size_t restartConfirmSelectedIndex_ = 0;
+  size_t sdCardRepairConfirmSelectedIndex_ = 0;
+  size_t updateConfirmSelectedIndex_ = 0;
   size_t focusTimerGenreSelectedIndex_ = 0;
   uint8_t brightnessLevelIndex_ = 4;
   uint8_t readerFontSizeIndex_ = 0;
@@ -371,6 +408,7 @@ class App {
   size_t typographyPreviewSampleIndex_ = 0;
   MenuScreen menuScreen_ = MenuScreen::Main;
   MenuScreen restartConfirmReturnScreen_ = MenuScreen::Main;
+  QueueHandle_t otaCheckQueue_ = nullptr;
   std::vector<String> settingsMenuItems_;
   std::vector<String> focusTimerGenreMenuItems_;
   std::vector<DisplayManager::LibraryItem> wifiNetworkMenuItems_;
@@ -388,6 +426,8 @@ class App {
   std::vector<TextEntryButton> textEntryButtons_;
   String currentBookPath_;
   String currentBookTitle_;
+  String pendingUpdateCurrentVersion_;
+  String pendingUpdateNewVersion_;
   String batteryLabel_;
   float batteryFilteredVoltage_ = 0.0f;
   float batteryFilteredPercent_ = 0.0f;
@@ -408,6 +448,8 @@ class App {
   bool powerButtonLongPressHandled_ = false;
   bool powerOffStarted_ = false;
   bool focusTimerCancelHoldTriggered_ = false;
+  bool otaCheckInProgress_ = false;
+  bool otaUpdatePromptPending_ = false;
   bool contextViewVisible_ = false;
   bool contextPreviewWindowValid_ = false;
   bool wpmFeedbackVisible_ = false;

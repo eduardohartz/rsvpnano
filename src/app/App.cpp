@@ -20,6 +20,7 @@
 #endif
 
 static const char *kAppTag = "app";
+constexpr uint32_t kOtaCheckTaskStackBytes = 10240;
 constexpr uint32_t kBootSplashMs = 750;
 constexpr uint32_t kWpmFeedbackMs = 900;
 constexpr uint32_t kPowerOffHoldMs = 1600;
@@ -116,7 +117,21 @@ enum RestartConfirmItem : size_t {
   RestartConfirmItemCount,
 };
 
+enum SdCardRepairConfirmItem : size_t {
+  SdCardRepairConfirmNo,
+  SdCardRepairConfirmYes,
+  SdCardRepairConfirmItemCount,
+};
+
+enum UpdateConfirmItem : size_t {
+  UpdateConfirmSkip,
+  UpdateConfirmUpdate,
+  UpdateConfirmItemCount,
+};
+
 constexpr size_t kRestartConfirmHeaderRows = 1;
+constexpr size_t kSdCardRepairConfirmHeaderRows = 1;
+constexpr size_t kUpdateConfirmHeaderRows = 2;
 constexpr size_t kSettingsBackIndex = 0;
 constexpr size_t kSettingsHomePacingIndex = 1;
 constexpr size_t kSettingsHomeDisplayIndex = 2;
@@ -320,6 +335,24 @@ const char *keyboardRowText(uint8_t modeValue, size_t rowIndex) {
 
 String storedOrFallbackLabel(const String &value, const String &fallback) {
   return value.isEmpty() ? fallback : value;
+}
+
+void copyOtaLabel(char *destination, size_t destinationSize, const String &source) {
+  if (destination == nullptr || destinationSize == 0) {
+    return;
+  }
+
+  const size_t copyLength = std::min(destinationSize - 1, source.length());
+  for (size_t i = 0; i < copyLength; ++i) {
+    destination[i] = source[i];
+  }
+  destination[copyLength] = '\0';
+}
+
+bool sdCardFolderRepairNeeded(const StorageManager::DiagnosticResult &result) {
+  return result.mounted &&
+         (!result.booksDirectory || !result.bookFilesDirectory ||
+          !result.articleFilesDirectory || !result.configDirectory);
 }
 
 DisplayManager::ReaderTypeface readerTypefaceFromSetting(uint8_t value) {
@@ -574,8 +607,10 @@ void App::update(uint32_t nowMs) {
   }
 
   const bool batteryChanged = updateBatteryStatus(nowMs);
+  pollOtaCheckResult(nowMs);
   updateState(nowMs);
   loadPendingBootBook(nowMs);
+  maybeOpenUpdateConfirm(nowMs);
   updateFocusTimer(nowMs);
   updateReader(nowMs);
   handleTouch(nowMs);
@@ -1918,6 +1953,12 @@ void App::moveMenuSelection(int direction) {
   } else if (menuScreen_ == MenuScreen::RestartConfirm) {
     selectedIndex = &restartConfirmSelectedIndex_;
     itemCount = RestartConfirmItemCount;
+  } else if (menuScreen_ == MenuScreen::SdCardRepairConfirm) {
+    selectedIndex = &sdCardRepairConfirmSelectedIndex_;
+    itemCount = SdCardRepairConfirmItemCount;
+  } else if (menuScreen_ == MenuScreen::UpdateConfirm) {
+    selectedIndex = &updateConfirmSelectedIndex_;
+    itemCount = UpdateConfirmItemCount;
   } else if (menuScreen_ == MenuScreen::FocusTimerGenres) {
     selectedIndex = &focusTimerGenreSelectedIndex_;
     itemCount = focusTimerGenreMenuItems_.size();
@@ -1963,6 +2004,14 @@ void App::moveMenuSelection(int direction) {
         break;
     }
     Serial.printf("[restart] selected=%s\n", selectedLabel.c_str());
+  } else if (menuScreen_ == MenuScreen::SdCardRepairConfirm) {
+    const String selectedLabel =
+        sdCardRepairConfirmSelectedIndex_ == SdCardRepairConfirmYes ? "Create folders" : "Not now";
+    Serial.printf("[sd-check] selected=%s\n", selectedLabel.c_str());
+  } else if (menuScreen_ == MenuScreen::UpdateConfirm) {
+    const String selectedLabel =
+        updateConfirmSelectedIndex_ == UpdateConfirmUpdate ? "Update" : "Skip for now";
+    Serial.printf("[ota] selected=%s\n", selectedLabel.c_str());
   } else if (menuScreen_ == MenuScreen::FocusTimerGenres) {
     Serial.printf("[timer] selected genre=%s\n",
                   focusTimerGenreMenuItems_[focusTimerGenreSelectedIndex_].c_str());
@@ -2035,6 +2084,14 @@ void App::selectMenuItem(uint32_t nowMs) {
   }
   if (menuScreen_ == MenuScreen::RestartConfirm) {
     selectRestartConfirmItem(nowMs);
+    return;
+  }
+  if (menuScreen_ == MenuScreen::SdCardRepairConfirm) {
+    selectSdCardRepairConfirmItem(nowMs);
+    return;
+  }
+  if (menuScreen_ == MenuScreen::UpdateConfirm) {
+    selectUpdateConfirmItem(nowMs);
     return;
   }
   if (menuScreen_ == MenuScreen::FocusTimerGenres) {
@@ -2302,6 +2359,10 @@ void App::selectWifiSettingsItem(uint32_t nowMs) {
 }
 
 void App::scanWifiNetworks() {
+  if (blockNetworkActionForOtaCheck("Wi-Fi", millis())) {
+    return;
+  }
+
   display_.renderProgress("Wi-Fi", "Scanning networks", "", 5);
 
   WiFi.persistent(false);
@@ -2885,23 +2946,149 @@ bool App::otaAutoCheckEnabled() {
 }
 
 void App::maybeAutoCheckForUpdates(uint32_t nowMs) {
+  (void)nowMs;
   OtaUpdater::Config otaConfig = preferredOtaConfig();
   if (!otaConfig.autoCheck || !otaUpdater_.isConfigured(otaConfig)) {
     return;
   }
 
   Serial.println("[ota] auto-check enabled");
-  runFirmwareUpdate(otaConfig, true, nowMs);
+  startBackgroundOtaCheck(otaConfig);
+}
+
+bool App::startBackgroundOtaCheck(const OtaUpdater::Config &config) {
+  if (otaCheckInProgress_) {
+    Serial.println("[ota] background check already running");
+    return false;
+  }
+
+  if (otaCheckQueue_ == nullptr) {
+    otaCheckQueue_ = xQueueCreate(1, sizeof(OtaCheckResult));
+    if (otaCheckQueue_ == nullptr) {
+      Serial.println("[ota] could not create result queue");
+      return false;
+    }
+  }
+  xQueueReset(otaCheckQueue_);
+
+  OtaCheckTaskParams *params = new OtaCheckTaskParams();
+  if (params == nullptr) {
+    Serial.println("[ota] could not allocate task params");
+    return false;
+  }
+  params->config = config;
+  params->resultQueue = otaCheckQueue_;
+
+  otaCheckInProgress_ = true;
+  BaseType_t created = xTaskCreatePinnedToCore(otaCheckTask, "ota_check",
+                                               kOtaCheckTaskStackBytes, params, 1, nullptr, 0);
+  if (created != pdPASS) {
+    Serial.printf("[ota] background task create failed: %ld\n", static_cast<long>(created));
+    otaCheckInProgress_ = false;
+    delete params;
+    return false;
+  }
+
+  Serial.println("[ota] background check started");
+  return true;
+}
+
+void App::otaCheckTask(void *params) {
+  OtaCheckTaskParams *taskParams = static_cast<OtaCheckTaskParams *>(params);
+  if (taskParams == nullptr) {
+    vTaskDelete(nullptr);
+    return;
+  }
+
+  OtaCheckResult queuedResult;
+
+  const OtaUpdater::Result result =
+      OtaUpdater().checkOnly(taskParams->config, nullptr, nullptr);
+  queuedResult.code = result.code;
+  copyOtaLabel(queuedResult.currentVersion, sizeof(queuedResult.currentVersion),
+               result.currentVersion);
+  copyOtaLabel(queuedResult.latestVersion, sizeof(queuedResult.latestVersion),
+               result.latestVersion);
+  copyOtaLabel(queuedResult.summary, sizeof(queuedResult.summary), result.summary);
+  copyOtaLabel(queuedResult.detail, sizeof(queuedResult.detail), result.detail);
+
+  if (taskParams->resultQueue != nullptr) {
+    xQueueOverwrite(taskParams->resultQueue, &queuedResult);
+  }
+
+  delete taskParams;
+  vTaskDelete(nullptr);
+}
+
+void App::pollOtaCheckResult(uint32_t nowMs) {
+  (void)nowMs;
+  if (otaCheckQueue_ == nullptr) {
+    return;
+  }
+
+  OtaCheckResult result;
+  while (xQueueReceive(otaCheckQueue_, &result, 0) == pdTRUE) {
+    otaCheckInProgress_ = false;
+    Serial.printf("[ota] background result code=%u current=%s latest=%s summary=%s detail=%s\n",
+                  static_cast<unsigned int>(result.code), result.currentVersion,
+                  result.latestVersion, result.summary, result.detail);
+
+    if (result.code == OtaUpdater::ResultCode::UpdateAvailable) {
+      pendingUpdateCurrentVersion_ = String(result.currentVersion);
+      pendingUpdateNewVersion_ = String(result.latestVersion);
+      otaUpdatePromptPending_ = true;
+    }
+  }
+}
+
+bool App::updateConfirmCanOpen() const {
+  return otaUpdatePromptPending_ && !pendingBootBookLoad_ && state_ == AppState::Paused;
+}
+
+void App::maybeOpenUpdateConfirm(uint32_t nowMs) {
+  if (!updateConfirmCanOpen()) {
+    return;
+  }
+
+  otaUpdatePromptPending_ = false;
+  setState(AppState::Menu, nowMs);
+  openUpdateConfirm();
+}
+
+bool App::blockNetworkActionForOtaCheck(const String &title, uint32_t nowMs) {
+  pollOtaCheckResult(nowMs);
+  if (!otaCheckInProgress_) {
+    return false;
+  }
+
+  display_.renderStatus(title, "OTA check running", "Try again soon");
+  delay(1200);
+  renderMenu();
+  return true;
 }
 
 void App::runFirmwareUpdate(const OtaUpdater::Config &config, bool automatic, uint32_t nowMs) {
-  (void)nowMs;
+  if (blockNetworkActionForOtaCheck("OTA", nowMs)) {
+    return;
+  }
+
+  if (!automatic) {
+    otaUpdatePromptPending_ = false;
+  }
+
   if (!otaUpdater_.isConfigured(config)) {
     if (!automatic) {
       display_.renderStatus("OTA", "Wi-Fi not set", "Settings -> Wi-Fi");
       delay(1600);
-      rebuildSettingsMenuItems();
-      renderSettings();
+      if (state_ == AppState::Menu &&
+          (menuScreen_ == MenuScreen::SettingsHome || menuScreen_ == MenuScreen::SettingsDisplay ||
+           menuScreen_ == MenuScreen::SettingsPacing || menuScreen_ == MenuScreen::WifiSettings)) {
+        rebuildSettingsMenuItems();
+        renderSettings();
+      } else {
+        menuScreen_ = MenuScreen::Main;
+        setState(AppState::Paused, nowMs);
+      }
     }
     return;
   }
@@ -2928,12 +3115,23 @@ void App::runFirmwareUpdate(const OtaUpdater::Config &config, bool automatic, ui
   const String line2 = result.detail.isEmpty() ? result.currentVersion : result.detail;
   display_.renderStatus("OTA", result.summary, line2);
   delay(1600);
-  rebuildSettingsMenuItems();
-  renderSettings();
+  if (state_ == AppState::Menu &&
+      (menuScreen_ == MenuScreen::SettingsHome || menuScreen_ == MenuScreen::SettingsDisplay ||
+       menuScreen_ == MenuScreen::SettingsPacing || menuScreen_ == MenuScreen::WifiSettings)) {
+    rebuildSettingsMenuItems();
+    renderSettings();
+  } else {
+    menuScreen_ = MenuScreen::Main;
+    setState(AppState::Paused, nowMs);
+  }
 }
 
 void App::runRssFeedCheck(uint32_t nowMs) {
   (void)nowMs;
+  if (blockNetworkActionForOtaCheck("RSS", nowMs)) {
+    return;
+  }
+
   saveReadingPosition(true);
 
   display_.renderStatus("RSS", "Checking feeds", "Please wait");
@@ -3255,7 +3453,46 @@ void App::selectRestartConfirmItem(uint32_t nowMs) {
   Serial.println("[restart] book restarted from beginning");
 }
 
+void App::openSdCardRepairConfirm() {
+  sdCardRepairConfirmSelectedIndex_ = SdCardRepairConfirmNo;
+  menuScreen_ = MenuScreen::SdCardRepairConfirm;
+  renderSdCardRepairConfirm();
+}
+
+void App::selectSdCardRepairConfirmItem(uint32_t nowMs) {
+  if (sdCardRepairConfirmSelectedIndex_ != SdCardRepairConfirmYes) {
+    Serial.println("[sd-check] folder repair declined");
+    menuScreen_ = MenuScreen::Main;
+    renderMenu();
+    return;
+  }
+
+  runSdCardRepair(nowMs);
+}
+
+void App::openUpdateConfirm() {
+  updateConfirmSelectedIndex_ = UpdateConfirmSkip;
+  menuScreen_ = MenuScreen::UpdateConfirm;
+  renderUpdateConfirm();
+}
+
+void App::selectUpdateConfirmItem(uint32_t nowMs) {
+  if (updateConfirmSelectedIndex_ != UpdateConfirmUpdate) {
+    Serial.println("[ota] update skipped by user");
+    menuScreen_ = MenuScreen::Main;
+    setState(AppState::Paused, nowMs);
+    return;
+  }
+
+  Serial.println("[ota] update confirmed by user");
+  runFirmwareUpdate(preferredOtaConfig(), false, nowMs);
+}
+
 void App::enterCompanionSync(uint32_t nowMs) {
+  if (blockNetworkActionForOtaCheck("Sync", nowMs)) {
+    return;
+  }
+
   Serial.println("[app] entering companion sync mode");
   saveReadingPosition(true);
   pausedTouch_.active = false;
@@ -3314,12 +3551,48 @@ void App::runSdCardCheck(uint32_t nowMs) {
   display_.renderStatus("SD check", "Starting", "");
   const StorageManager::DiagnosticResult result = storage_.diagnoseSdCard();
 
+  if (sdCardFolderRepairNeeded(result)) {
+    display_.renderStatus("SD check", "Folders missing", "Confirm repair");
+    delay(900);
+    openSdCardRepairConfirm();
+    return;
+  }
+
   String detail = result.detail;
   if (detail.isEmpty() && result.mounted) {
     detail = String(static_cast<unsigned int>(result.sizeMb)) + " MB";
   }
   display_.renderStatus("SD check", result.summary, detail);
-  delay(4200);
+  delay(2600);
+
+  menuScreen_ = MenuScreen::Main;
+  renderMenu();
+}
+
+void App::runSdCardRepair(uint32_t nowMs) {
+  (void)nowMs;
+  Serial.println("[app] repairing SD card folder layout");
+  display_.renderStatus("SD check", "Repairing folders", "Please wait");
+  const bool repaired = storage_.repairSdCardFolders();
+  if (!repaired) {
+    display_.renderStatus("SD check", "Folder repair failed", "Format FAT32 MBR");
+    delay(2600);
+    menuScreen_ = MenuScreen::Main;
+    renderMenu();
+    return;
+  }
+
+  display_.renderStatus("SD check", "Folders repaired", "Checking card");
+  delay(900);
+
+  const StorageManager::DiagnosticResult result = storage_.diagnoseSdCard();
+  String detail = result.detail;
+  if (detail.isEmpty() && result.mounted) {
+    detail = String(static_cast<unsigned int>(result.sizeMb)) + " MB";
+  }
+  display_.renderStatus("SD check", result.summary, detail);
+  delay(2600);
+
   menuScreen_ = MenuScreen::Main;
   renderMenu();
 }
@@ -3733,6 +4006,10 @@ void App::renderMenu() {
     renderChapterPicker();
   } else if (menuScreen_ == MenuScreen::RestartConfirm) {
     renderRestartConfirm();
+  } else if (menuScreen_ == MenuScreen::SdCardRepairConfirm) {
+    renderSdCardRepairConfirm();
+  } else if (menuScreen_ == MenuScreen::UpdateConfirm) {
+    renderUpdateConfirm();
   } else if (menuScreen_ == MenuScreen::FocusTimerGenres) {
     renderFocusTimerGenres();
   } else if (menuScreen_ == MenuScreen::FocusTimerSession) {
@@ -3827,6 +4104,27 @@ void App::renderRestartConfirm() {
   items.push_back(uiText(UiText::YesRestart));
 
   display_.renderMenu(items, restartConfirmSelectedIndex_ + kRestartConfirmHeaderRows);
+}
+
+void App::renderSdCardRepairConfirm() {
+  std::vector<String> items;
+  items.reserve(SdCardRepairConfirmItemCount + kSdCardRepairConfirmHeaderRows);
+  items.push_back("Repair folders?");
+  items.push_back("Not now");
+  items.push_back("Create folders");
+
+  display_.renderMenu(items, sdCardRepairConfirmSelectedIndex_ + kSdCardRepairConfirmHeaderRows);
+}
+
+void App::renderUpdateConfirm() {
+  std::vector<String> items;
+  items.reserve(UpdateConfirmItemCount + kUpdateConfirmHeaderRows);
+  items.push_back("Update available");
+  items.push_back(pendingUpdateCurrentVersion_ + " -> " + pendingUpdateNewVersion_);
+  items.push_back("Skip for now");
+  items.push_back("Update");
+
+  display_.renderMenu(items, updateConfirmSelectedIndex_ + kUpdateConfirmHeaderRows);
 }
 
 void App::renderFocusTimerGenres() {

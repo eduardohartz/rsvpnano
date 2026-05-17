@@ -120,6 +120,28 @@ bool booksDirectoryExists() {
   return exists;
 }
 
+bool directoryExists(const char *path) {
+  File dir = SD_MMC.open(path);
+  const bool exists = dir && dir.isDirectory();
+  if (dir) {
+    dir.close();
+  }
+  return exists;
+}
+
+bool ensureDirectory(const char *path) {
+  if (directoryExists(path)) {
+    Serial.printf("[sd-check] directory exists: %s\n", path);
+    return true;
+  }
+  Serial.printf("[sd-check] creating directory: %s\n", path);
+  const bool mkdirOk = SD_MMC.mkdir(path);
+  const bool existsAfter = directoryExists(path);
+  Serial.printf("[sd-check] mkdir path=%s ok=%u existsAfter=%u\n", path, mkdirOk ? 1 : 0,
+                existsAfter ? 1 : 0);
+  return mkdirOk || existsAfter;
+}
+
 String cardTypeLabel(uint8_t cardType) {
   switch (cardType) {
     case CARD_MMC:
@@ -423,16 +445,24 @@ size_t countUnsupportedBookFiles() {
   return unsupported;
 }
 
-bool writeDiagnosticProbeFile() {
-  const String path = String(kBooksPath) + "/.sdcheck.tmp";
+bool writeDiagnosticProbeFile(const char *directoryPath) {
+  String path = String(directoryPath);
+  if (!path.endsWith("/")) {
+    path += "/";
+  }
+  path += ".sdcheck.tmp";
+  Serial.printf("[sd-check] write probe path=%s\n", path.c_str());
   SD_MMC.remove(path);
   File file = SD_MMC.open(path, FILE_WRITE);
   if (!file) {
+    Serial.printf("[sd-check] write probe open failed: %s\n", path.c_str());
     return false;
   }
   const size_t written = file.print("rsvp-nano sd check\n");
   file.close();
   const bool removed = SD_MMC.remove(path);
+  Serial.printf("[sd-check] write probe result path=%s written=%u removed=%u\n",
+                path.c_str(), static_cast<unsigned int>(written), removed ? 1 : 0);
   return written > 0 && removed;
 }
 
@@ -1836,8 +1866,8 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
   result.mounted = mounted_;
   if (!mounted_) {
     result.summary = "Card not mounted";
-    result.detail = "FAT32? seated fully?";
-    Serial.println("[sd-check] mount failed; likely format, seating, or card fault");
+    result.detail = "Format FAT32 MBR";
+    Serial.println("[sd-check] mount failed; likely format/partition issue, seating, or card fault");
     return result;
   }
 
@@ -1846,11 +1876,20 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
   Serial.printf("[sd-check] mounted type=%s size=%llu MB\n", result.cardType.c_str(),
                 result.sizeMb);
 
-  result.booksDirectory = booksDirectoryExists();
-  if (!result.booksDirectory) {
-    result.summary = "Missing /books";
-    result.detail = "Create folder at root";
-    Serial.println("[sd-check] /books directory missing");
+  notifyStatus("SD check", "Checking folders", "", 30);
+  result.booksDirectory = directoryExists(kBooksPath);
+  result.bookFilesDirectory = directoryExists(kBookFilesPath);
+  result.articleFilesDirectory = directoryExists(kArticleFilesPath);
+  result.configDirectory = directoryExists("/config");
+  if (!result.booksDirectory || !result.bookFilesDirectory || !result.articleFilesDirectory ||
+      !result.configDirectory) {
+    result.summary = "Folders missing";
+    result.detail = "Can create layout";
+    Serial.printf("[sd-check] v0.0.4 folders missing /books=%u /books/books=%u "
+                  "/books/articles=%u /config=%u\n",
+                  result.booksDirectory ? 1 : 0, result.bookFilesDirectory ? 1 : 0,
+                  result.articleFilesDirectory ? 1 : 0, result.configDirectory ? 1 : 0);
+    notifyStatus("SD check", "Folders missing", "Confirm repair", 38);
     return result;
   }
 
@@ -1861,11 +1900,22 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
   result.unsupportedCount = countUnsupportedBookFiles();
 
   notifyStatus("SD check", "Testing write", "", 70);
-  result.writable = writeDiagnosticProbeFile();
+  result.writable = writeDiagnosticProbeFile(kBooksPath);
+  result.booksWritable = writeDiagnosticProbeFile(kBookFilesPath);
+  result.articlesWritable = writeDiagnosticProbeFile(kArticleFilesPath);
+  result.configWritable = writeDiagnosticProbeFile("/config");
   if (!result.writable) {
     result.summary = "Write test failed";
-    result.detail = "Try FAT32/new card";
-    Serial.println("[sd-check] write/delete probe failed");
+    result.detail = "Format FAT32 MBR";
+    Serial.println("[sd-check] /books write/delete probe failed");
+    return result;
+  }
+  if (!result.booksWritable || !result.articlesWritable || !result.configWritable) {
+    result.summary = "Folder write failed";
+    result.detail = "Format FAT32 MBR";
+    Serial.printf("[sd-check] folder write failed books=%u articles=%u config=%u\n",
+                  result.booksWritable ? 1 : 0, result.articlesWritable ? 1 : 0,
+                  result.configWritable ? 1 : 0);
     return result;
   }
 
@@ -1874,7 +1924,7 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
     if (result.unsupportedCount > 0) {
       result.detail = "Use .rsvp .txt .epub";
     } else {
-      result.detail = "Upload to /books";
+      result.detail = "Upload to /books/books";
     }
     Serial.printf("[sd-check] no supported books; unsupported=%u\n",
                   static_cast<unsigned int>(result.unsupportedCount));
@@ -1887,6 +1937,32 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
                 static_cast<unsigned int>(result.bookCount),
                 static_cast<unsigned int>(result.unsupportedCount), result.writable ? 1 : 0);
   return result;
+}
+
+bool StorageManager::repairSdCardFolders() {
+  if (!mounted_) {
+    Serial.println("[sd-check] folder repair skipped: card not mounted");
+    return false;
+  }
+
+  Serial.println("[sd-check] repairing v0.0.4 folder layout");
+  const bool rootWritable = writeDiagnosticProbeFile("/");
+  Serial.printf("[sd-check] root write probe=%u\n", rootWritable ? 1 : 0);
+
+  const bool booksOk = ensureDirectory(kBooksPath);
+  const bool bookFilesOk = booksOk && ensureDirectory(kBookFilesPath);
+  const bool articleFilesOk = booksOk && ensureDirectory(kArticleFilesPath);
+  const bool configOk = ensureDirectory("/config");
+  const bool ok = rootWritable && booksOk && bookFilesOk && articleFilesOk && configOk;
+  if (ok) {
+    Serial.println("[sd-check] repaired v0.0.4 folder layout");
+  } else {
+    Serial.printf("[sd-check] folder repair failed rootWritable=%u /books=%u /books/books=%u "
+                  "/books/articles=%u /config=%u\n",
+                  rootWritable ? 1 : 0, booksOk ? 1 : 0, bookFilesOk ? 1 : 0,
+                  articleFilesOk ? 1 : 0, configOk ? 1 : 0);
+  }
+  return ok;
 }
 
 void StorageManager::refreshBookPaths(bool includeMetadata) {
