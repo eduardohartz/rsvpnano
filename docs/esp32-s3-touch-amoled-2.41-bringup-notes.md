@@ -8,13 +8,12 @@ hardware quirks.
 
 ## Checkpoint Context
 
-- Repo base at port time: local `main` on `v0.0.3`
-- Upstream status discovered afterward: local tree is behind `origin/main` by `50` commits
+- Original bring-up started on local `main` at `v0.0.3`
+- Port checkpoint branch: `checkpoint/esp32s3-amoled-241-v003-base`
+- Current integrated branch: `integration/esp32s3-amoled-241-v005`
+- Current repo base: upstream `v0.0.5`
 - Current working port target: `waveshare_esp32s3_touch_amoled_241`
 - Original preserved target: `waveshare_esp32s3`
-
-Important: this port works on top of an older firmware base. Before shipping, the safest next step
-is to carry these changes forward onto current upstream `v0.0.5` or newer.
 
 ## Current Hardware Status
 
@@ -26,12 +25,12 @@ What is working on the `2.41` board now:
 - Layout aligns with the visible panel area
 - Fixed on-screen stripe artifacts are gone
 - Battery hold and battery ADC path are wired for this board
+- SD card loading works on the `2.41`, including with the original device's SD card
 - Shared dual-target repo structure is in place
 
 What is not yet considered safe or complete:
 
 - OTA is not board-aware yet
-- This target has not been rebased onto the latest upstream firmware
 - Longer burn-in testing is still needed
 - USB MSC behavior on this target has not been fully validated
 
@@ -165,16 +164,14 @@ Recommended future fix:
 
 ## Recommended Next Steps
 
-1. Create a branch from this checkpoint if continuing active port work.
-2. Rebase or merge this port onto upstream `v0.0.5`.
-3. Make OTA board-aware before enabling updates on multiple device families.
-4. Run hardware QA on the `2.41`:
+1. Make OTA board-aware before enabling updates on multiple device families.
+2. Run broader hardware QA on the `2.41`:
    - sleep and wake
    - SD load behavior
    - battery reporting
    - long reading session stability
    - brightness and dark-mode behavior
-5. Validate whether USB transfer mode needs any `2.41`-specific handling.
+3. Validate whether USB transfer mode needs any `2.41`-specific handling.
 
 ## Build Targets
 
