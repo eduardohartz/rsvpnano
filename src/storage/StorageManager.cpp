@@ -2,8 +2,8 @@
 
 #include <SD_MMC.h>
 #include <algorithm>
-#include <cerrno>
 #include <cctype>
+#include <cerrno>
 #include <cstdint>
 #include <cstring>
 #include <driver/sdmmc_types.h>
@@ -36,29 +36,31 @@ constexpr size_t kParseMemoryCheckWordInterval = 512;
 constexpr size_t kParseMinFreeHeapBytes = 32 * 1024;
 constexpr size_t kParseMinLargestHeapBlockBytes = 8 * 1024;
 constexpr int kSdFrequenciesKhz[] = {
-    SDMMC_FREQ_DEFAULT,
     10000,
+    SDMMC_FREQ_DEFAULT,
     SDMMC_FREQ_PROBING,
 };
 
-void logFsErrno(const char *tag, const char *operation, const String &path, int error) {
+void logFsErrnoMessage(const char *tag, const char *operation,
+                       const String &target, int error) {
   if (error != 0) {
-    Serial.printf("[%s] %s failed path=%s errno=%d (%s)\n", tag, operation, path.c_str(), error,
-                  std::strerror(error));
+    Serial.printf("[%s] %s failed %s errno=%d (%s)\n", tag, operation,
+                  target.c_str(), error, std::strerror(error));
   } else {
-    Serial.printf("[%s] %s failed path=%s errno=0\n", tag, operation, path.c_str());
+    Serial.printf("[%s] %s failed %s errno=0\n", tag, operation,
+                  target.c_str());
   }
 }
 
-void logFsErrno(const char *tag, const char *operation, const String &from, const String &to,
+void logFsErrno(const char *tag, const char *operation, const String &path,
                 int error) {
-  if (error != 0) {
-    Serial.printf("[%s] %s failed from=%s to=%s errno=%d (%s)\n", tag, operation, from.c_str(),
-                  to.c_str(), error, std::strerror(error));
-  } else {
-    Serial.printf("[%s] %s failed from=%s to=%s errno=0\n", tag, operation, from.c_str(),
-                  to.c_str());
-  }
+  logFsErrnoMessage(tag, operation, String("path=") + path, error);
+}
+
+void logFsErrno(const char *tag, const char *operation, const String &from,
+                const String &to, int error) {
+  logFsErrnoMessage(tag, operation, String("from=") + from + " to=" + to,
+                    error);
 }
 
 bool hasBookWordLimit() { return kMaxBookWords > 0; }
@@ -76,20 +78,21 @@ struct ParseStats {
 
 bool parseMemoryLow() {
   return heap_caps_get_free_size(MALLOC_CAP_8BIT) < kParseMinFreeHeapBytes ||
-         heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < kParseMinLargestHeapBlockBytes;
+         heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) <
+             kParseMinLargestHeapBlockBytes;
 }
 
 bool isAsciiTrimWhitespace(char c) {
   switch (c) {
-    case ' ':
-    case '\t':
-    case '\n':
-    case '\r':
-    case '\f':
-    case '\v':
-      return true;
-    default:
-      return false;
+  case ' ':
+  case '\t':
+  case '\n':
+  case '\r':
+  case '\f':
+  case '\v':
+    return true;
+  default:
+    return false;
   }
 }
 
@@ -129,7 +132,8 @@ bool isInlineWordHyphen(const String &text, size_t index) {
   if (text[index - 1] == '-' || text[index + 1] == '-') {
     return false;
   }
-  return isReadableTokenChar(text[index - 1]) && isReadableTokenChar(text[index + 1]);
+  return isReadableTokenChar(text[index - 1]) &&
+         isReadableTokenChar(text[index + 1]);
 }
 
 bool tokenHasReadableCharacter(const String &token) {
@@ -165,7 +169,9 @@ bool isEllipsisToken(const String &token) {
   return true;
 }
 
-bool isStandaloneRhythmToken(const String &token) { return isHyphenToken(token); }
+bool isStandaloneRhythmToken(const String &token) {
+  return isHyphenToken(token);
+}
 
 bool prefixHasBoundary(const String &lowered, const char *prefix) {
   const size_t prefixLength = std::strlen(prefix);
@@ -178,8 +184,8 @@ bool prefixHasBoundary(const String &lowered, const char *prefix) {
 
   const char next = lowered[prefixLength];
   const uint8_t nextValue = LatinText::byteValue(next);
-  return (nextValue <= ' ' && !LatinText::isWordCharacter(nextValue)) || next == ':' ||
-         next == '.' || next == '-';
+  return (nextValue <= ' ' && !LatinText::isWordCharacter(nextValue)) ||
+         next == ':' || next == '.' || next == '-';
 }
 
 bool booksDirectoryExists() {
@@ -223,8 +229,8 @@ bool ensureDirectory(const char *path) {
   const bool mkdirOk = SD_MMC.mkdir(path);
   const int mkdirErrno = errno;
   const bool existsAfter = directoryExists(path);
-  Serial.printf("[sd-check] mkdir path=%s ok=%u existsAfter=%u\n", path, mkdirOk ? 1 : 0,
-                existsAfter ? 1 : 0);
+  Serial.printf("[sd-check] mkdir path=%s ok=%u existsAfter=%u\n", path,
+                mkdirOk ? 1 : 0, existsAfter ? 1 : 0);
   if (!mkdirOk && !existsAfter) {
     logFsErrno("sd-check", "mkdir", String(path), mkdirErrno);
   }
@@ -246,14 +252,14 @@ String parentDirectoryForPath(const String &path) {
 
 String cardTypeLabel(uint8_t cardType) {
   switch (cardType) {
-    case CARD_MMC:
-      return "MMC";
-    case CARD_SD:
-      return "SDSC";
-    case CARD_SDHC:
-      return "SDHC/SDXC";
-    default:
-      return "Unknown";
+  case CARD_MMC:
+    return "MMC";
+  case CARD_SD:
+    return "SDSC";
+  case CARD_SDHC:
+    return "SDHC/SDXC";
+  default:
+    return "Unknown";
   }
 }
 
@@ -363,12 +369,14 @@ void handleEpubProgress(void *rawContext, const char *line1, const char *line2,
       context->basePercent + ((context->spanPercent * progressPercent) / 100);
   const String detail = String(line1 == nullptr ? "" : line1) + " - " +
                         String(line2 == nullptr ? "" : line2);
-  const char *title = context->title.isEmpty() ? "EPUB" : context->title.c_str();
+  const char *title =
+      context->title.isEmpty() ? "EPUB" : context->title.c_str();
   Serial.printf("[epub-progress] %d%% %s | %s | %s\n", overallPercent, title,
                 context->label.c_str(), detail.c_str());
 
-  // Keep the display on the static "Converting EPUB" screen while ZIP work is active.
-  // Full-screen redraws from inside this callback have proven risky while the SD archive is open.
+  // Keep the display on the static "Converting EPUB" screen while ZIP work is
+  // active. Full-screen redraws from inside this callback have proven risky
+  // while the SD archive is open.
   yield();
   delay(0);
 }
@@ -384,7 +392,8 @@ bool fileExistsAndHasBytes(const String &path) {
 
 bool hasCurrentEpubCache(const String &epubPath) {
   const String rsvpPath = rsvpCachePathForEpub(epubPath);
-  return fileExistsAndHasBytes(rsvpPath) && EpubConverter::isCurrentCache(rsvpPath);
+  return fileExistsAndHasBytes(rsvpPath) &&
+         EpubConverter::isCurrentCache(rsvpPath);
 }
 
 bool markerExists(const String &path) {
@@ -401,7 +410,8 @@ String epubLibraryLabel(const String &path) {
   if (markerExists(rsvpPath + ".failed")) {
     return "EPUB failed - check serial";
   }
-  if (markerExists(rsvpPath + ".converting") || markerExists(rsvpPath + ".tmp")) {
+  if (markerExists(rsvpPath + ".converting") ||
+      markerExists(rsvpPath + ".tmp")) {
     return "EPUB interrupted";
   }
   return "EPUB - converts on open";
@@ -417,12 +427,15 @@ int pathIndexIn(const std::vector<String> &paths, const String &target) {
 }
 
 void logHeapSnapshot(const char *label) {
-  Serial.printf("[heap] %s free8=%lu free_spiram=%lu largest8=%lu largest_spiram=%lu\n",
-                label == nullptr ? "" : label,
-                static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
-                static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
-                static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)),
-                static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
+  Serial.printf(
+      "[heap] %s free8=%lu free_spiram=%lu largest8=%lu largest_spiram=%lu\n",
+      label == nullptr ? "" : label,
+      static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+      static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+      static_cast<unsigned long>(
+          heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)),
+      static_cast<unsigned long>(
+          heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
 }
 
 struct DirectoryEntryInfo {
@@ -431,7 +444,8 @@ struct DirectoryEntryInfo {
   size_t bytes = 0;
 };
 
-void appendLibraryDirectoryEntries(const char *directoryPath, std::vector<DirectoryEntryInfo> &entries) {
+void appendLibraryDirectoryEntries(const char *directoryPath,
+                                   std::vector<DirectoryEntryInfo> &entries) {
   File dir = SD_MMC.open(directoryPath);
   if (!dir || !dir.isDirectory()) {
     if (dir) {
@@ -469,7 +483,8 @@ std::vector<DirectoryEntryInfo> inventoryBookDirectory() {
   return entries;
 }
 
-bool inventoryHasFileWithBytes(const std::vector<DirectoryEntryInfo> &entries, const String &path) {
+bool inventoryHasFileWithBytes(const std::vector<DirectoryEntryInfo> &entries,
+                               const String &path) {
   String loweredPath = path;
   loweredPath.toLowerCase();
   for (const DirectoryEntryInfo &entry : entries) {
@@ -501,7 +516,8 @@ std::vector<String> collectBookPaths() {
 
     const bool readableText =
         hasTextExtension(path) &&
-        !inventoryHasFileWithBytes(entries, siblingPathWithExtension(path, ".rsvp"));
+        !inventoryHasFileWithBytes(entries,
+                                   siblingPathWithExtension(path, ".rsvp"));
 
     bool pendingEpub = false;
     if (RSVP_ON_DEVICE_EPUB_CONVERSION && hasEpubExtension(path)) {
@@ -515,20 +531,23 @@ std::vector<String> collectBookPaths() {
       }
     }
 
-    if ((!staleGeneratedRsvp && hasRsvpExtension(path)) || readableText || pendingEpub) {
+    if ((!staleGeneratedRsvp && hasRsvpExtension(path)) || readableText ||
+        pendingEpub) {
       bookPaths.push_back(path);
     }
   }
 
-  std::sort(bookPaths.begin(), bookPaths.end(), [](const String &left, const String &right) {
-    String leftKey = displayNameForPath(left);
-    String rightKey = displayNameForPath(right);
-    leftKey.toLowerCase();
-    rightKey.toLowerCase();
-    return leftKey < rightKey;
-  });
+  std::sort(bookPaths.begin(), bookPaths.end(),
+            [](const String &left, const String &right) {
+              String leftKey = displayNameForPath(left);
+              String rightKey = displayNameForPath(right);
+              leftKey.toLowerCase();
+              rightKey.toLowerCase();
+              return leftKey < rightKey;
+            });
 
-  Serial.printf("[storage] Directory inventory: %u files, %u books, %u cache probes in %lu ms\n",
+  Serial.printf("[storage] Directory inventory: %u files, %u books, %u cache "
+                "probes in %lu ms\n",
                 static_cast<unsigned int>(entries.size()),
                 static_cast<unsigned int>(bookPaths.size()),
                 static_cast<unsigned int>(cacheProbeCount),
@@ -544,7 +563,8 @@ size_t countUnsupportedBookFiles() {
   for (const DirectoryEntryInfo &entry : entries) {
     const String &path = entry.path;
     const bool hidden = isHiddenOrSidecarPath(path);
-    if (!hidden && !hasRsvpExtension(path) && !hasTextExtension(path) && !hasEpubExtension(path)) {
+    if (!hidden && !hasRsvpExtension(path) && !hasTextExtension(path) &&
+        !hasEpubExtension(path)) {
       ++unsupported;
     }
   }
@@ -554,7 +574,8 @@ size_t countUnsupportedBookFiles() {
 
 bool writeDiagnosticProbeFile(const char *directoryPath) {
   if (!directoryExists(directoryPath)) {
-    Serial.printf("[sd-check] write probe skipped, not a directory: %s\n", directoryPath);
+    Serial.printf("[sd-check] write probe skipped, not a directory: %s\n",
+                  directoryPath);
     return false;
   }
 
@@ -579,7 +600,8 @@ bool writeDiagnosticProbeFile(const char *directoryPath) {
   const bool removed = SD_MMC.remove(path);
   const int removeErrno = errno;
   Serial.printf("[sd-check] write probe result path=%s written=%u removed=%u\n",
-                path.c_str(), static_cast<unsigned int>(written), removed ? 1 : 0);
+                path.c_str(), static_cast<unsigned int>(written),
+                removed ? 1 : 0);
   if (!removed) {
     logFsErrno("sd-check", "remove", path, removeErrno);
   }
@@ -588,7 +610,8 @@ bool writeDiagnosticProbeFile(const char *directoryPath) {
 
 bool isUtf8Continuation(uint8_t value) { return (value & 0xC0) == 0x80; }
 
-bool decodeUtf8Codepoint(const String &text, size_t &index, uint32_t &codepoint) {
+bool decodeUtf8Codepoint(const String &text, size_t &index,
+                         uint32_t &codepoint) {
   const uint8_t first = static_cast<uint8_t>(text[index++]);
   if (first < 0x80) {
     codepoint = first;
@@ -647,10 +670,11 @@ void appendDisplayApproximation(String &target, uint32_t codepoint) {
     return;
   }
 
-  if (codepoint == '\t' || codepoint == '\n' || codepoint == '\r' || codepoint == 0x00A0 ||
-      codepoint == 0x1680 || codepoint == 0x180E || codepoint == 0x2028 ||
-      codepoint == 0x2029 || codepoint == 0x202F || codepoint == 0x205F ||
-      codepoint == 0x3000 || (codepoint >= 0x2000 && codepoint <= 0x200A)) {
+  if (codepoint == '\t' || codepoint == '\n' || codepoint == '\r' ||
+      codepoint == 0x00A0 || codepoint == 0x1680 || codepoint == 0x180E ||
+      codepoint == 0x2028 || codepoint == 0x2029 || codepoint == 0x202F ||
+      codepoint == 0x205F || codepoint == 0x3000 ||
+      (codepoint >= 0x2000 && codepoint <= 0x200A)) {
     target += ' ';
     return;
   }
@@ -671,616 +695,616 @@ void appendDisplayApproximation(String &target, uint32_t codepoint) {
   }
 
   switch (codepoint) {
-    case 0x00A1:
-      target += '!';
-      return;
-    case 0x00A2:
-      target += 'c';
-      return;
-    case 0x00A3:
-      appendText(target, "GBP");
-      return;
-    case 0x00A4:
-      target += '$';
-      return;
-    case 0x00A5:
-      target += 'Y';
-      return;
-    case 0x00A6:
-      target += '|';
-      return;
-    case 0x00A7:
-      target += 'S';
-      return;
-    case 0x00A8:
-      target += '"';
-      return;
-    case 0x00A9:
-      appendText(target, "(c)");
-      return;
-    case 0x00AA:
-      target += 'a';
-      return;
-    case 0x00AB:
-      target += '"';
-      return;
-    case 0x00AC:
-      target += '!';
-      return;
-    case 0x00AE:
-      appendText(target, "(r)");
-      return;
-    case 0x00AF:
-      target += '-';
-      return;
-    case 0x00B0:
-      appendText(target, "deg");
-      return;
-    case 0x00B1:
-      appendText(target, "+/-");
-      return;
-    case 0x00B2:
-      target += '2';
-      return;
-    case 0x00B3:
-      target += '3';
-      return;
-    case 0x00B4:
-      target += '\'';
-      return;
-    case 0x00B5:
-      target += 'u';
-      return;
-    case 0x00B6:
-      target += 'P';
-      return;
-    case 0x00B7:
-      target += '*';
-      return;
-    case 0x00B8:
-      target += ',';
-      return;
-    case 0x00B9:
-      target += '1';
-      return;
-    case 0x00BA:
-      target += 'o';
-      return;
-    case 0x00BB:
-      target += '"';
-      return;
-    case 0x2039:
-    case 0x203A:
-      target += '\'';
-      return;
-    case 0x00BC:
-      appendText(target, "1/4");
-      return;
-    case 0x00BD:
-      appendText(target, "1/2");
-      return;
-    case 0x00BE:
-      appendText(target, "3/4");
-      return;
-    case 0x00BF:
-      target += '?';
-      return;
-    case 0x2018:
-    case 0x2019:
-    case 0x201A:
-    case 0x201B:
-    case 0x2032:
-    case 0x2035:
-      target += '\'';
-      return;
-    case 0x201C:
-    case 0x201D:
-    case 0x201E:
-    case 0x201F:
-    case 0x2033:
-    case 0x2036:
-    case 0x300C:
-    case 0x300D:
-    case 0x300E:
-    case 0x300F:
-      target += '"';
-      return;
-    case 0x207D:
-    case 0x208D:
-    case 0x2768:
-    case 0x276A:
-    case 0xFF08:
-      target += '(';
-      return;
-    case 0x207E:
-    case 0x208E:
-    case 0x2769:
-    case 0x276B:
-    case 0xFF09:
-      target += ')';
-      return;
-    case 0x2045:
-    case 0x2308:
-    case 0x230A:
-    case 0x3010:
-    case 0x3014:
-    case 0x3016:
-    case 0x3018:
-    case 0x301A:
-    case 0xFF3B:
-      target += '[';
-      return;
-    case 0x2046:
-    case 0x2309:
-    case 0x230B:
-    case 0x3011:
-    case 0x3015:
-    case 0x3017:
-    case 0x3019:
-    case 0x301B:
-    case 0xFF3D:
-      target += ']';
-      return;
-    case 0x2774:
-    case 0x2776:
-    case 0xFF5B:
-      target += '{';
-      return;
-    case 0x2775:
-    case 0x2777:
-    case 0xFF5D:
-      target += '}';
-      return;
-    case 0x2329:
-    case 0x27E8:
-    case 0x3008:
-    case 0x300A:
-      target += '<';
-      return;
-    case 0x232A:
-    case 0x27E9:
-    case 0x3009:
-    case 0x300B:
-      target += '>';
-      return;
-    case 0x2010:
-    case 0x2011:
-      target += '-';
-      return;
-    case 0x2012:
-    case 0x2013:
-    case 0x2014:
-    case 0x2015:
-    case 0x2043:
-      appendText(target, " - ");
-      return;
-    case 0x2212:
-      target += '-';
-      return;
-    case 0x2026:
-      appendText(target, "...");
-      return;
-    case 0x2022:
-    case 0x2219:
-      target += '*';
-      return;
-    case 0xFF0C:
-      target += ',';
-      return;
-    case 0xFF0E:
-      target += '.';
-      return;
-    case 0xFF1A:
-      target += ':';
-      return;
-    case 0xFF1B:
-      target += ';';
-      return;
-    case 0xFF01:
-      target += '!';
-      return;
-    case 0xFF1F:
-      target += '?';
-      return;
-    case 0x2122:
-      appendText(target, "TM");
-      return;
-    case 0x00D7:
-      target += 'x';
-      return;
-    case 0x00F7:
-      target += '/';
-      return;
-    case 0x0100:
-    case 0x0102:
-      target += 'A';
-      return;
-    case 0x0101:
-    case 0x0103:
-      target += 'a';
-      return;
-    case 0x0108:
-    case 0x010A:
-    case 0x010C:
-      target += 'C';
-      return;
-    case 0x0109:
-    case 0x010B:
-    case 0x010D:
-      target += 'c';
-      return;
-    case 0x010E:
-    case 0x0110:
-      target += 'D';
-      return;
-    case 0x010F:
-    case 0x0111:
-      target += 'd';
-      return;
-    case 0x0112:
-    case 0x0114:
-    case 0x0116:
-    case 0x011A:
-      target += 'E';
-      return;
-    case 0x0113:
-    case 0x0115:
-    case 0x0117:
-    case 0x011B:
-      target += 'e';
-      return;
-    case 0x011C:
-    case 0x011E:
-    case 0x0120:
-    case 0x0122:
-      target += 'G';
-      return;
-    case 0x011D:
-    case 0x011F:
-    case 0x0121:
-    case 0x0123:
-      target += 'g';
-      return;
-    case 0x0124:
-    case 0x0126:
-      target += 'H';
-      return;
-    case 0x0125:
-    case 0x0127:
-      target += 'h';
-      return;
-    case 0x0128:
-    case 0x012A:
-    case 0x012C:
-    case 0x012E:
-    case 0x0130:
-      target += 'I';
-      return;
-    case 0x0129:
-    case 0x012B:
-    case 0x012D:
-    case 0x012F:
-    case 0x0131:
-      target += 'i';
-      return;
-    case 0x0134:
-      target += 'J';
-      return;
-    case 0x0135:
-      target += 'j';
-      return;
-    case 0x0136:
-      target += 'K';
-      return;
-    case 0x0137:
-      target += 'k';
-      return;
-    case 0x0139:
-    case 0x013B:
-    case 0x013D:
-    case 0x013F:
-      target += 'L';
-      return;
-    case 0x013A:
-    case 0x013C:
-    case 0x013E:
-    case 0x0140:
-      target += 'l';
-      return;
-    case 0x0145:
-    case 0x0147:
-      target += 'N';
-      return;
-    case 0x0146:
-    case 0x0148:
-      target += 'n';
-      return;
-    case 0x014C:
-    case 0x014E:
-    case 0x0150:
-      target += 'O';
-      return;
-    case 0x014D:
-    case 0x014F:
-    case 0x0151:
-      target += 'o';
-      return;
-    case 0x0152:
-      appendText(target, "OE");
-      return;
-    case 0x0153:
-      appendText(target, "oe");
-      return;
-    case 0x0154:
-    case 0x0156:
-    case 0x0158:
-      target += 'R';
-      return;
-    case 0x0155:
-    case 0x0157:
-    case 0x0159:
-      target += 'r';
-      return;
-    case 0x015C:
-    case 0x015E:
-    case 0x0160:
-      target += 'S';
-      return;
-    case 0x015D:
-    case 0x015F:
-    case 0x0161:
-      target += 's';
-      return;
-    case 0x0162:
-    case 0x0164:
-    case 0x0166:
-      target += 'T';
-      return;
-    case 0x0163:
-    case 0x0165:
-    case 0x0167:
-      target += 't';
-      return;
-    case 0x0168:
-    case 0x016A:
-    case 0x016C:
-    case 0x016E:
-    case 0x0170:
-    case 0x0172:
-      target += 'U';
-      return;
-    case 0x0169:
-    case 0x016B:
-    case 0x016D:
-    case 0x016F:
-    case 0x0171:
-    case 0x0173:
-      target += 'u';
-      return;
-    case 0x0174:
-      target += 'W';
-      return;
-    case 0x0175:
-      target += 'w';
-      return;
-    case 0x0176:
-    case 0x0178:
-      target += 'Y';
-      return;
-    case 0x0177:
-      target += 'y';
-      return;
-    case 0x017D:
-      target += 'Z';
-      return;
-    case 0x017E:
-      target += 'z';
-      return;
-    case 0x01E2:
-    case 0x01FC:
-      appendText(target, "AE");
-      return;
-    case 0x01E3:
-    case 0x01FD:
-      appendText(target, "ae");
-      return;
-    case 0xFB00:
-      appendText(target, "ff");
-      return;
-    case 0xFB01:
-      appendText(target, "fi");
-      return;
-    case 0xFB02:
-      appendText(target, "fl");
-      return;
-    case 0xFB03:
-      appendText(target, "ffi");
-      return;
-    case 0xFB04:
-      appendText(target, "ffl");
-      return;
-    case 0xFB05:
-    case 0xFB06:
-      appendText(target, "st");
-      return;
-    default:
-      return;
+  case 0x00A1:
+    target += '!';
+    return;
+  case 0x00A2:
+    target += 'c';
+    return;
+  case 0x00A3:
+    appendText(target, "GBP");
+    return;
+  case 0x00A4:
+    target += '$';
+    return;
+  case 0x00A5:
+    target += 'Y';
+    return;
+  case 0x00A6:
+    target += '|';
+    return;
+  case 0x00A7:
+    target += 'S';
+    return;
+  case 0x00A8:
+    target += '"';
+    return;
+  case 0x00A9:
+    appendText(target, "(c)");
+    return;
+  case 0x00AA:
+    target += 'a';
+    return;
+  case 0x00AB:
+    target += '"';
+    return;
+  case 0x00AC:
+    target += '!';
+    return;
+  case 0x00AE:
+    appendText(target, "(r)");
+    return;
+  case 0x00AF:
+    target += '-';
+    return;
+  case 0x00B0:
+    appendText(target, "deg");
+    return;
+  case 0x00B1:
+    appendText(target, "+/-");
+    return;
+  case 0x00B2:
+    target += '2';
+    return;
+  case 0x00B3:
+    target += '3';
+    return;
+  case 0x00B4:
+    target += '\'';
+    return;
+  case 0x00B5:
+    target += 'u';
+    return;
+  case 0x00B6:
+    target += 'P';
+    return;
+  case 0x00B7:
+    target += '*';
+    return;
+  case 0x00B8:
+    target += ',';
+    return;
+  case 0x00B9:
+    target += '1';
+    return;
+  case 0x00BA:
+    target += 'o';
+    return;
+  case 0x00BB:
+    target += '"';
+    return;
+  case 0x2039:
+  case 0x203A:
+    target += '\'';
+    return;
+  case 0x00BC:
+    appendText(target, "1/4");
+    return;
+  case 0x00BD:
+    appendText(target, "1/2");
+    return;
+  case 0x00BE:
+    appendText(target, "3/4");
+    return;
+  case 0x00BF:
+    target += '?';
+    return;
+  case 0x2018:
+  case 0x2019:
+  case 0x201A:
+  case 0x201B:
+  case 0x2032:
+  case 0x2035:
+    target += '\'';
+    return;
+  case 0x201C:
+  case 0x201D:
+  case 0x201E:
+  case 0x201F:
+  case 0x2033:
+  case 0x2036:
+  case 0x300C:
+  case 0x300D:
+  case 0x300E:
+  case 0x300F:
+    target += '"';
+    return;
+  case 0x207D:
+  case 0x208D:
+  case 0x2768:
+  case 0x276A:
+  case 0xFF08:
+    target += '(';
+    return;
+  case 0x207E:
+  case 0x208E:
+  case 0x2769:
+  case 0x276B:
+  case 0xFF09:
+    target += ')';
+    return;
+  case 0x2045:
+  case 0x2308:
+  case 0x230A:
+  case 0x3010:
+  case 0x3014:
+  case 0x3016:
+  case 0x3018:
+  case 0x301A:
+  case 0xFF3B:
+    target += '[';
+    return;
+  case 0x2046:
+  case 0x2309:
+  case 0x230B:
+  case 0x3011:
+  case 0x3015:
+  case 0x3017:
+  case 0x3019:
+  case 0x301B:
+  case 0xFF3D:
+    target += ']';
+    return;
+  case 0x2774:
+  case 0x2776:
+  case 0xFF5B:
+    target += '{';
+    return;
+  case 0x2775:
+  case 0x2777:
+  case 0xFF5D:
+    target += '}';
+    return;
+  case 0x2329:
+  case 0x27E8:
+  case 0x3008:
+  case 0x300A:
+    target += '<';
+    return;
+  case 0x232A:
+  case 0x27E9:
+  case 0x3009:
+  case 0x300B:
+    target += '>';
+    return;
+  case 0x2010:
+  case 0x2011:
+    target += '-';
+    return;
+  case 0x2012:
+  case 0x2013:
+  case 0x2014:
+  case 0x2015:
+  case 0x2043:
+    appendText(target, " - ");
+    return;
+  case 0x2212:
+    target += '-';
+    return;
+  case 0x2026:
+    appendText(target, "...");
+    return;
+  case 0x2022:
+  case 0x2219:
+    target += '*';
+    return;
+  case 0xFF0C:
+    target += ',';
+    return;
+  case 0xFF0E:
+    target += '.';
+    return;
+  case 0xFF1A:
+    target += ':';
+    return;
+  case 0xFF1B:
+    target += ';';
+    return;
+  case 0xFF01:
+    target += '!';
+    return;
+  case 0xFF1F:
+    target += '?';
+    return;
+  case 0x2122:
+    appendText(target, "TM");
+    return;
+  case 0x00D7:
+    target += 'x';
+    return;
+  case 0x00F7:
+    target += '/';
+    return;
+  case 0x0100:
+  case 0x0102:
+    target += 'A';
+    return;
+  case 0x0101:
+  case 0x0103:
+    target += 'a';
+    return;
+  case 0x0108:
+  case 0x010A:
+  case 0x010C:
+    target += 'C';
+    return;
+  case 0x0109:
+  case 0x010B:
+  case 0x010D:
+    target += 'c';
+    return;
+  case 0x010E:
+  case 0x0110:
+    target += 'D';
+    return;
+  case 0x010F:
+  case 0x0111:
+    target += 'd';
+    return;
+  case 0x0112:
+  case 0x0114:
+  case 0x0116:
+  case 0x011A:
+    target += 'E';
+    return;
+  case 0x0113:
+  case 0x0115:
+  case 0x0117:
+  case 0x011B:
+    target += 'e';
+    return;
+  case 0x011C:
+  case 0x011E:
+  case 0x0120:
+  case 0x0122:
+    target += 'G';
+    return;
+  case 0x011D:
+  case 0x011F:
+  case 0x0121:
+  case 0x0123:
+    target += 'g';
+    return;
+  case 0x0124:
+  case 0x0126:
+    target += 'H';
+    return;
+  case 0x0125:
+  case 0x0127:
+    target += 'h';
+    return;
+  case 0x0128:
+  case 0x012A:
+  case 0x012C:
+  case 0x012E:
+  case 0x0130:
+    target += 'I';
+    return;
+  case 0x0129:
+  case 0x012B:
+  case 0x012D:
+  case 0x012F:
+  case 0x0131:
+    target += 'i';
+    return;
+  case 0x0134:
+    target += 'J';
+    return;
+  case 0x0135:
+    target += 'j';
+    return;
+  case 0x0136:
+    target += 'K';
+    return;
+  case 0x0137:
+    target += 'k';
+    return;
+  case 0x0139:
+  case 0x013B:
+  case 0x013D:
+  case 0x013F:
+    target += 'L';
+    return;
+  case 0x013A:
+  case 0x013C:
+  case 0x013E:
+  case 0x0140:
+    target += 'l';
+    return;
+  case 0x0145:
+  case 0x0147:
+    target += 'N';
+    return;
+  case 0x0146:
+  case 0x0148:
+    target += 'n';
+    return;
+  case 0x014C:
+  case 0x014E:
+  case 0x0150:
+    target += 'O';
+    return;
+  case 0x014D:
+  case 0x014F:
+  case 0x0151:
+    target += 'o';
+    return;
+  case 0x0152:
+    appendText(target, "OE");
+    return;
+  case 0x0153:
+    appendText(target, "oe");
+    return;
+  case 0x0154:
+  case 0x0156:
+  case 0x0158:
+    target += 'R';
+    return;
+  case 0x0155:
+  case 0x0157:
+  case 0x0159:
+    target += 'r';
+    return;
+  case 0x015C:
+  case 0x015E:
+  case 0x0160:
+    target += 'S';
+    return;
+  case 0x015D:
+  case 0x015F:
+  case 0x0161:
+    target += 's';
+    return;
+  case 0x0162:
+  case 0x0164:
+  case 0x0166:
+    target += 'T';
+    return;
+  case 0x0163:
+  case 0x0165:
+  case 0x0167:
+    target += 't';
+    return;
+  case 0x0168:
+  case 0x016A:
+  case 0x016C:
+  case 0x016E:
+  case 0x0170:
+  case 0x0172:
+    target += 'U';
+    return;
+  case 0x0169:
+  case 0x016B:
+  case 0x016D:
+  case 0x016F:
+  case 0x0171:
+  case 0x0173:
+    target += 'u';
+    return;
+  case 0x0174:
+    target += 'W';
+    return;
+  case 0x0175:
+    target += 'w';
+    return;
+  case 0x0176:
+  case 0x0178:
+    target += 'Y';
+    return;
+  case 0x0177:
+    target += 'y';
+    return;
+  case 0x017D:
+    target += 'Z';
+    return;
+  case 0x017E:
+    target += 'z';
+    return;
+  case 0x01E2:
+  case 0x01FC:
+    appendText(target, "AE");
+    return;
+  case 0x01E3:
+  case 0x01FD:
+    appendText(target, "ae");
+    return;
+  case 0xFB00:
+    appendText(target, "ff");
+    return;
+  case 0xFB01:
+    appendText(target, "fi");
+    return;
+  case 0xFB02:
+    appendText(target, "fl");
+    return;
+  case 0xFB03:
+    appendText(target, "ffi");
+    return;
+  case 0xFB04:
+    appendText(target, "ffl");
+    return;
+  case 0xFB05:
+  case 0xFB06:
+    appendText(target, "st");
+    return;
+  default:
+    return;
   }
 }
 
 void appendSingleByteApproximation(String &target, uint8_t value) {
   switch (value) {
-    case 0xA0:
-      target += ' ';
-      return;
-    case 0xA1:
-      target += static_cast<char>(0x96);
-      return;
-    case 0xA2:
-      target += 'c';
-      return;
-    case 0xA3:
-      target += static_cast<char>(0x82);
-      return;
-    case 0xA4:
-      target += '$';
-      return;
-    case 0xA5:
-      target += 'Y';
-      return;
-    case 0xA6:
-      target += static_cast<char>(0x9E);
-      return;
-    case 0xA7:
-      target += 'S';
-      return;
-    case 0xA8:
-      target += '"';
-      return;
-    case 0xA9:
-      appendText(target, "(c)");
-      return;
-    case 0xAA:
-      target += 'a';
-      return;
-    case 0xAB:
-      target += '"';
-      return;
-    case 0xAD:
-      return;
-    case 0xAC:
-      target += '!';
-      return;
-    case 0xAE:
-      target += static_cast<char>(0xB4);
-      return;
-    case 0xAF:
-      target += static_cast<char>(0xB2);
-      return;
-    case 0xB0:
-      appendText(target, "deg");
-      return;
-    case 0xB1:
-      target += static_cast<char>(0x97);
-      return;
-    case 0x80:
-      appendText(target, "EUR");
-      return;
-    case 0x8A:
-      target += static_cast<char>(0x86);
-      return;
-    case 0x8C:
-      target += static_cast<char>(0x80);
-      return;
-    case 0x8E:
-      target += static_cast<char>(0x88);
-      return;
-    case 0x82:
-    case 0x91:
-    case 0x92:
-      target += '\'';
-      return;
-    case 0x84:
-    case 0x93:
-    case 0x94:
-      target += '"';
-      return;
-    case 0x85:
-      appendText(target, "...");
-      return;
-    case 0x95:
-      target += '*';
-      return;
-    case 0x96:
-    case 0x97:
-      target += '-';
-      return;
-    case 0x99:
-      appendText(target, "TM");
-      return;
-    case 0x9A:
-      target += static_cast<char>(0x87);
-      return;
-    case 0x9C:
-      target += static_cast<char>(0x81);
-      return;
-    case 0x9E:
-      target += static_cast<char>(0x89);
-      return;
-    case 0x9F:
-      target += 'Y';
-      return;
-    case 0xB2:
-      target += '2';
-      return;
-    case 0xB3:
-      target += static_cast<char>(0x83);
-      return;
-    case 0xB4:
-      target += '\'';
-      return;
-    case 0xB5:
-      target += 'u';
-      return;
-    case 0xB6:
-      target += static_cast<char>(0x9F);
-      return;
-    case 0xB7:
-      target += '*';
-      return;
-    case 0xB8:
-      target += ',';
-      return;
-    case 0xB9:
-      target += '1';
-      return;
-    case 0xBA:
-      target += 'o';
-      return;
-    case 0xBB:
-      target += '"';
-      return;
-    case 0xBC:
-      appendText(target, "1/4");
-      return;
-    case 0xBD:
-      appendText(target, "1/2");
-      return;
-    case 0xBE:
-      target += static_cast<char>(0xB5);
-      return;
-    case 0xBF:
-      target += static_cast<char>(0xB3);
-      return;
-    case 0xC6:
-      target += static_cast<char>(0x9A);
-      return;
-    case 0xCA:
-      target += static_cast<char>(0x98);
-      return;
-    case 0xD1:
-      target += static_cast<char>(0x9C);
-      return;
-    case 0xD7:
-      target += 'x';
-      return;
-    case 0xE6:
-      target += static_cast<char>(0x9B);
-      return;
-    case 0xEA:
-      target += static_cast<char>(0x99);
-      return;
-    case 0xF1:
-      target += static_cast<char>(0x9D);
-      return;
-    case 0xF7:
-      target += '/';
-      return;
-    default:
-      if (value >= 0xA0) {
-        target += static_cast<char>(value);
-      }
-      return;
+  case 0xA0:
+    target += ' ';
+    return;
+  case 0xA1:
+    target += static_cast<char>(0x96);
+    return;
+  case 0xA2:
+    target += 'c';
+    return;
+  case 0xA3:
+    target += static_cast<char>(0x82);
+    return;
+  case 0xA4:
+    target += '$';
+    return;
+  case 0xA5:
+    target += 'Y';
+    return;
+  case 0xA6:
+    target += static_cast<char>(0x9E);
+    return;
+  case 0xA7:
+    target += 'S';
+    return;
+  case 0xA8:
+    target += '"';
+    return;
+  case 0xA9:
+    appendText(target, "(c)");
+    return;
+  case 0xAA:
+    target += 'a';
+    return;
+  case 0xAB:
+    target += '"';
+    return;
+  case 0xAD:
+    return;
+  case 0xAC:
+    target += '!';
+    return;
+  case 0xAE:
+    target += static_cast<char>(0xB4);
+    return;
+  case 0xAF:
+    target += static_cast<char>(0xB2);
+    return;
+  case 0xB0:
+    appendText(target, "deg");
+    return;
+  case 0xB1:
+    target += static_cast<char>(0x97);
+    return;
+  case 0x80:
+    appendText(target, "EUR");
+    return;
+  case 0x8A:
+    target += static_cast<char>(0x86);
+    return;
+  case 0x8C:
+    target += static_cast<char>(0x80);
+    return;
+  case 0x8E:
+    target += static_cast<char>(0x88);
+    return;
+  case 0x82:
+  case 0x91:
+  case 0x92:
+    target += '\'';
+    return;
+  case 0x84:
+  case 0x93:
+  case 0x94:
+    target += '"';
+    return;
+  case 0x85:
+    appendText(target, "...");
+    return;
+  case 0x95:
+    target += '*';
+    return;
+  case 0x96:
+  case 0x97:
+    target += '-';
+    return;
+  case 0x99:
+    appendText(target, "TM");
+    return;
+  case 0x9A:
+    target += static_cast<char>(0x87);
+    return;
+  case 0x9C:
+    target += static_cast<char>(0x81);
+    return;
+  case 0x9E:
+    target += static_cast<char>(0x89);
+    return;
+  case 0x9F:
+    target += 'Y';
+    return;
+  case 0xB2:
+    target += '2';
+    return;
+  case 0xB3:
+    target += static_cast<char>(0x83);
+    return;
+  case 0xB4:
+    target += '\'';
+    return;
+  case 0xB5:
+    target += 'u';
+    return;
+  case 0xB6:
+    target += static_cast<char>(0x9F);
+    return;
+  case 0xB7:
+    target += '*';
+    return;
+  case 0xB8:
+    target += ',';
+    return;
+  case 0xB9:
+    target += '1';
+    return;
+  case 0xBA:
+    target += 'o';
+    return;
+  case 0xBB:
+    target += '"';
+    return;
+  case 0xBC:
+    appendText(target, "1/4");
+    return;
+  case 0xBD:
+    appendText(target, "1/2");
+    return;
+  case 0xBE:
+    target += static_cast<char>(0xB5);
+    return;
+  case 0xBF:
+    target += static_cast<char>(0xB3);
+    return;
+  case 0xC6:
+    target += static_cast<char>(0x9A);
+    return;
+  case 0xCA:
+    target += static_cast<char>(0x98);
+    return;
+  case 0xD1:
+    target += static_cast<char>(0x9C);
+    return;
+  case 0xD7:
+    target += 'x';
+    return;
+  case 0xE6:
+    target += static_cast<char>(0x9B);
+    return;
+  case 0xEA:
+    target += static_cast<char>(0x99);
+    return;
+  case 0xF1:
+    target += static_cast<char>(0x9D);
+    return;
+  case 0xF7:
+    target += '/';
+    return;
+  default:
+    if (value >= 0xA0) {
+      target += static_cast<char>(value);
+    }
+    return;
   }
 }
 
@@ -1305,7 +1329,8 @@ String normalizeDisplayText(const String &text, ParseStats *stats = nullptr) {
     }
     index = before + 1;
     const uint8_t rawByte = static_cast<uint8_t>(text[before]);
-    if (LatinText::isWordCharacter(rawByte) || LatinText::isLowCustomSlotByte(rawByte)) {
+    if (LatinText::isWordCharacter(rawByte) ||
+        LatinText::isLowCustomSlotByte(rawByte)) {
       normalized += static_cast<char>(rawByte);
     } else {
       appendSingleByteApproximation(normalized, rawByte);
@@ -1337,8 +1362,8 @@ String normalizeDisplayText(const String &text, ParseStats *stats = nullptr) {
 }
 
 template <typename PushToken, typename WordCount>
-bool appendTokenizedLineWords(const String &line, PushToken pushToken, WordCount wordCount,
-                              ParseStats *stats) {
+bool appendTokenizedLineWords(const String &line, PushToken pushToken,
+                              WordCount wordCount, ParseStats *stats) {
   const String normalizedLine = normalizeDisplayText(line, stats);
   String currentWord;
   String pendingToken;
@@ -1418,8 +1443,8 @@ bool appendTokenizedLineWords(const String &line, PushToken pushToken, WordCount
       continue;
     }
 
-    if (c == '.' && i + 2 < normalizedLine.length() && normalizedLine[i + 1] == '.' &&
-        normalizedLine[i + 2] == '.') {
+    if (c == '.' && i + 2 < normalizedLine.length() &&
+        normalizedLine[i + 1] == '.' && normalizedLine[i + 2] == '.') {
       currentWord += "...";
       i += 2;
       while (i + 1 < normalizedLine.length() && normalizedLine[i + 1] == '.') {
@@ -1441,11 +1466,13 @@ bool appendTokenizedLineWords(const String &line, PushToken pushToken, WordCount
   return flushPending();
 }
 
-bool pushCleanWord(String token, std::vector<String> &words, ParseStats *stats) {
+bool pushCleanWord(String token, std::vector<String> &words,
+                   ParseStats *stats) {
   trimAsciiWhitespace(token);
 
   if (token.length() >= 3 && static_cast<uint8_t>(token[0]) == 0xEF &&
-      static_cast<uint8_t>(token[1]) == 0xBB && static_cast<uint8_t>(token[2]) == 0xBF) {
+      static_cast<uint8_t>(token[1]) == 0xBB &&
+      static_cast<uint8_t>(token[2]) == 0xBF) {
     token.remove(0, 3);
   }
 
@@ -1471,7 +1498,8 @@ bool pushCleanWord(String token, std::vector<String> &words, ParseStats *stats) 
 String stripBom(String text) {
   trimAsciiWhitespace(text);
   if (text.length() >= 3 && static_cast<uint8_t>(text[0]) == 0xEF &&
-      static_cast<uint8_t>(text[1]) == 0xBB && static_cast<uint8_t>(text[2]) == 0xBF) {
+      static_cast<uint8_t>(text[1]) == 0xBB &&
+      static_cast<uint8_t>(text[2]) == 0xBF) {
     text.remove(0, 3);
     trimAsciiWhitespace(text);
   }
@@ -1497,7 +1525,8 @@ bool chapterTitleFromLine(const String &line, String &title) {
 
   String lowered = trimmed;
   lowered.toLowerCase();
-  if (prefixHasBoundary(lowered, "chapter") || prefixHasBoundary(lowered, "part") ||
+  if (prefixHasBoundary(lowered, "chapter") ||
+      prefixHasBoundary(lowered, "part") ||
       prefixHasBoundary(lowered, "book")) {
     title = trimmed;
     return true;
@@ -1515,7 +1544,8 @@ void addChapterMarker(BookContent &book, const String &title) {
   marker.title = title;
   marker.wordIndex = book.words.size();
 
-  if (!book.chapters.empty() && book.chapters.back().wordIndex == marker.wordIndex) {
+  if (!book.chapters.empty() &&
+      book.chapters.back().wordIndex == marker.wordIndex) {
     book.chapters.back() = marker;
     return;
   }
@@ -1525,7 +1555,8 @@ void addChapterMarker(BookContent &book, const String &title) {
 
 void addParagraphMarker(BookContent &book) {
   const size_t wordIndex = book.words.size();
-  if (!book.paragraphStarts.empty() && book.paragraphStarts.back() == wordIndex) {
+  if (!book.paragraphStarts.empty() &&
+      book.paragraphStarts.back() == wordIndex) {
     return;
   }
 
@@ -1535,21 +1566,24 @@ void addParagraphMarker(BookContent &book) {
 String directiveValue(const String &line, const char *directive) {
   String value = line.substring(std::strlen(directive));
   trimAsciiWhitespace(value);
-  if (!value.isEmpty() && (value[0] == ':' || value[0] == '-' || value[0] == '.')) {
+  if (!value.isEmpty() &&
+      (value[0] == ':' || value[0] == '-' || value[0] == '.')) {
     value.remove(0, 1);
     trimAsciiWhitespace(value);
   }
   return normalizeDisplayText(value);
 }
 
-bool appendLineWords(const String &line, std::vector<String> &words, ParseStats *stats) {
+bool appendLineWords(const String &line, std::vector<String> &words,
+                     ParseStats *stats) {
   return appendTokenizedLineWords(
-      line, [&](const String &token) { return pushCleanWord(token, words, stats); },
+      line,
+      [&](const String &token) { return pushCleanWord(token, words, stats); },
       [&]() { return words.size(); }, stats);
 }
 
-bool processBookLine(const String &line, BookContent &book, bool &paragraphPending,
-                     ParseStats *stats) {
+bool processBookLine(const String &line, BookContent &book,
+                     bool &paragraphPending, ParseStats *stats) {
   const String trimmed = stripBom(line);
   if (trimmed.isEmpty()) {
     paragraphPending = true;
@@ -1569,8 +1603,8 @@ bool processBookLine(const String &line, BookContent &book, bool &paragraphPendi
   return appendLineWords(line, book.words, stats);
 }
 
-bool processRsvpLine(const String &line, BookContent &book, bool &paragraphPending,
-                     ParseStats *stats) {
+bool processRsvpLine(const String &line, BookContent &book,
+                     bool &paragraphPending, ParseStats *stats) {
   String trimmed = stripBom(line);
   if (trimmed.isEmpty()) {
     paragraphPending = true;
@@ -1665,7 +1699,8 @@ RsvpDirectiveValues readRsvpDirectiveValues(const String &path) {
     lowered.toLowerCase();
     if (values.title.isEmpty() && prefixHasBoundary(lowered, "@title")) {
       values.title = directiveValue(trimmed, "@title");
-    } else if (values.author.isEmpty() && prefixHasBoundary(lowered, "@author")) {
+    } else if (values.author.isEmpty() &&
+               prefixHasBoundary(lowered, "@author")) {
       values.author = directiveValue(trimmed, "@author");
     } else if (!trimmed.startsWith("@")) {
       break;
@@ -1740,7 +1775,7 @@ String indexedDataPathFor(const String &path) { return path + ".rdat"; }
 String indexedTempPathFor(const String &path) { return path + ".tmp"; }
 
 class BufferedWriter {
- public:
+public:
   explicit BufferedWriter(File &file, size_t capacity = 4096) : file_(file) {
     buffer_.reserve(capacity);
   }
@@ -1784,7 +1819,8 @@ class BufferedWriter {
     if (buffer_.empty()) {
       return true;
     }
-    const bool ok = file_.write(buffer_.data(), buffer_.size()) == buffer_.size();
+    const bool ok =
+        file_.write(buffer_.data(), buffer_.size()) == buffer_.size();
     buffer_.clear();
     if (!ok) {
       failed_ = true;
@@ -1800,7 +1836,7 @@ class BufferedWriter {
     failed_ = true;
   }
 
- private:
+private:
   File &file_;
   std::vector<uint8_t> buffer_;
   bool failed_ = false;
@@ -1840,8 +1876,8 @@ uint32_t sourceFingerprint(File &file, uint32_t sourceSize) {
     if (!file.seek(offset)) {
       continue;
     }
-    const size_t wanted =
-        static_cast<size_t>(std::min<uint32_t>(kSampleBytes, sourceSize - offset));
+    const size_t wanted = static_cast<size_t>(
+        std::min<uint32_t>(kSampleBytes, sourceSize - offset));
     const size_t read = file.read(buffer, wanted);
     hash = fnv1aUpdate(hash, buffer, read);
   }
@@ -1891,7 +1927,8 @@ struct IndexedBuildContext {
   const char *failure = "";
 };
 
-void addIndexedChapterMarker(IndexedBuildContext &context, const String &title) {
+void addIndexedChapterMarker(IndexedBuildContext &context,
+                             const String &title) {
   if (title.isEmpty() || context.metadata == nullptr) {
     return;
   }
@@ -1923,11 +1960,13 @@ void addIndexedParagraphMarker(IndexedBuildContext &context) {
   context.metadata->paragraphStarts.push_back(wordIndex);
 }
 
-bool pushIndexedWord(String token, IndexedBuildContext &context, ParseStats *stats) {
+bool pushIndexedWord(String token, IndexedBuildContext &context,
+                     ParseStats *stats) {
   trimAsciiWhitespace(token);
 
   if (token.length() >= 3 && static_cast<uint8_t>(token[0]) == 0xEF &&
-      static_cast<uint8_t>(token[1]) == 0xBB && static_cast<uint8_t>(token[2]) == 0xBF) {
+      static_cast<uint8_t>(token[1]) == 0xBB &&
+      static_cast<uint8_t>(token[2]) == 0xBF) {
     token.remove(0, 3);
   }
 
@@ -1945,8 +1984,8 @@ bool pushIndexedWord(String token, IndexedBuildContext &context, ParseStats *sta
     return false;
   }
 
-  if ((context.wordCount % kParseMemoryCheckWordInterval) == 0 && context.wordCount > 0 &&
-      parseMemoryLow()) {
+  if ((context.wordCount % kParseMemoryCheckWordInterval) == 0 &&
+      context.wordCount > 0 && parseMemoryLow()) {
     if (stats != nullptr) {
       stats->memoryLow = true;
     }
@@ -1975,9 +2014,13 @@ bool pushIndexedWord(String token, IndexedBuildContext &context, ParseStats *sta
   return true;
 }
 
-bool appendIndexedLineWords(const String &line, IndexedBuildContext &context, ParseStats *stats) {
+bool appendIndexedLineWords(const String &line, IndexedBuildContext &context,
+                            ParseStats *stats) {
   return appendTokenizedLineWords(
-      line, [&](const String &token) { return pushIndexedWord(token, context, stats); },
+      line,
+      [&](const String &token) {
+        return pushIndexedWord(token, context, stats);
+      },
       [&]() { return static_cast<size_t>(context.wordCount); }, stats);
 }
 
@@ -2053,15 +2096,15 @@ bool processIndexedRsvpLine(const String &line, IndexedBuildContext &context,
   return appendIndexedLineWords(line, context, stats);
 }
 
-}  // namespace
+} // namespace
 
 void StorageManager::setStatusCallback(StatusCallback callback, void *context) {
   statusCallback_ = callback;
   statusContext_ = context;
 }
 
-void StorageManager::notifyStatus(const char *title, const char *line1, const char *line2,
-                                  int progressPercent) {
+void StorageManager::notifyStatus(const char *title, const char *line1,
+                                  const char *line2, int progressPercent) {
   Serial.printf("[storage-status] %d%% %s | %s | %s\n", progressPercent,
                 title == nullptr ? "" : title, line1 == nullptr ? "" : line1,
                 line2 == nullptr ? "" : line2);
@@ -2075,7 +2118,8 @@ bool StorageManager::begin() {
   listedOnce_ = false;
   clearBookCache();
 
-  if (!SD_MMC.setPins(BoardConfig::PIN_SD_CLK, BoardConfig::PIN_SD_CMD, BoardConfig::PIN_SD_D0)) {
+  if (!SD_MMC.setPins(BoardConfig::PIN_SD_CLK, BoardConfig::PIN_SD_CMD,
+                      BoardConfig::PIN_SD_D0)) {
     Serial.println("[storage] SD_MMC pin setup failed");
     return false;
   }
@@ -2087,7 +2131,8 @@ bool StorageManager::begin() {
     mounted_ = SD_MMC.begin(kMountPoint, true, false, frequencyKhz, 5);
     if (mounted_) {
       const uint64_t sizeMb = SD_MMC.cardSize() / (1024ULL * 1024ULL);
-      Serial.printf("[storage] SD initialized (%llu MB) at %d kHz\n", sizeMb, frequencyKhz);
+      Serial.printf("[storage] SD initialized (%llu MB) at %d kHz\n", sizeMb,
+                    frequencyKhz);
       notifyStatus("SD", "Scanning books", "EPUB converts on open", 10);
       refreshBookPaths(false);
       return true;
@@ -2122,11 +2167,13 @@ void StorageManager::listBooks() {
     refreshBookPaths();
   }
   if (bookPaths_.empty()) {
-    Serial.println("[storage] No readable .rsvp, .txt, or .epub books found under /books");
+    Serial.println(
+        "[storage] No readable .rsvp, .txt, or .epub books found under /books");
     return;
   }
 
-  Serial.println("[storage] Listing /books, /books/books, /books/articles (.rsvp/.txt/.epub pending conversion):");
+  Serial.println("[storage] Listing /books, /books/books, /books/articles "
+                 "(.rsvp/.txt/.epub pending conversion):");
   for (const String &path : bookPaths_) {
     File entry = SD_MMC.open(path);
     if (!entry || entry.isDirectory()) {
@@ -2146,7 +2193,8 @@ void StorageManager::refreshBooks(bool includeMetadata) {
   refreshBookPaths(includeMetadata);
 }
 
-bool StorageManager::loadFirstBookWords(std::vector<String> &words, String *loadedPath) {
+bool StorageManager::loadFirstBookWords(std::vector<String> &words,
+                                        String *loadedPath) {
   return loadBookWords(0, words, loadedPath);
 }
 
@@ -2194,29 +2242,36 @@ String StorageManager::bookAuthorName(size_t index) const {
   return readRsvpDirectiveValue(path, "@author");
 }
 
-bool StorageManager::ensureEpubConverted(const String &epubPath, String &rsvpPath) {
+bool StorageManager::ensureEpubConverted(const String &epubPath,
+                                         String &rsvpPath) {
   rsvpPath = rsvpCachePathForEpub(epubPath);
 
   if (!RSVP_ON_DEVICE_EPUB_CONVERSION) {
-    Serial.printf("[storage] EPUB conversion disabled at build time: %s\n", epubPath.c_str());
+    Serial.printf("[storage] EPUB conversion disabled at build time: %s\n",
+                  epubPath.c_str());
     notifyStatus("EPUB unsupported", displayNameForPath(epubPath).c_str(),
                  "Build flag is disabled", 100);
     return false;
   }
 
   if (!fileExistsAndHasBytes(epubPath)) {
-    Serial.printf("[storage] EPUB source missing or empty: %s\n", epubPath.c_str());
-    notifyStatus("Preparing book", displayNameForPath(epubPath).c_str(), "EPUB missing", 100);
+    Serial.printf("[storage] EPUB source missing or empty: %s\n",
+                  epubPath.c_str());
+    notifyStatus("Preparing book", displayNameForPath(epubPath).c_str(),
+                 "EPUB missing", 100);
     return false;
   }
 
-  if (fileExistsAndHasBytes(rsvpPath) && EpubConverter::isCurrentCache(rsvpPath)) {
-    Serial.printf("[storage] EPUB cache hit: %s -> %s\n", epubPath.c_str(), rsvpPath.c_str());
+  if (fileExistsAndHasBytes(rsvpPath) &&
+      EpubConverter::isCurrentCache(rsvpPath)) {
+    Serial.printf("[storage] EPUB cache hit: %s -> %s\n", epubPath.c_str(),
+                  rsvpPath.c_str());
     return true;
   }
 
   if (fileExistsAndHasBytes(rsvpPath)) {
-    Serial.printf("[storage] EPUB cache stale after converter update: %s\n", rsvpPath.c_str());
+    Serial.printf("[storage] EPUB cache stale after converter update: %s\n",
+                  rsvpPath.c_str());
   }
 
   File epubFile = SD_MMC.open(epubPath);
@@ -2225,10 +2280,13 @@ bool StorageManager::ensureEpubConverted(const String &epubPath, String &rsvpPat
     epubFile.close();
   }
 
-  Serial.printf("[storage] Preparing EPUB conversion: source=%s output=%s size=%lu bytes\n",
-                epubPath.c_str(), rsvpPath.c_str(), static_cast<unsigned long>(epubBytes));
+  Serial.printf("[storage] Preparing EPUB conversion: source=%s output=%s "
+                "size=%lu bytes\n",
+                epubPath.c_str(), rsvpPath.c_str(),
+                static_cast<unsigned long>(epubBytes));
   logHeapSnapshot("before EPUB conversion");
-  notifyStatus("Preparing book", displayNameForPath(epubPath).c_str(), "Converting EPUB", 0);
+  notifyStatus("Preparing book", displayNameForPath(epubPath).c_str(),
+               "Converting EPUB", 0);
 
   EpubConverter::Options options;
   options.maxWords = kMaxBookWords;
@@ -2241,26 +2299,28 @@ bool StorageManager::ensureEpubConverted(const String &epubPath, String &rsvpPat
   options.progressContext = &progressContext;
 
   const uint32_t startedMs = millis();
-  const bool converted = EpubConverter::convertIfNeeded(epubPath, rsvpPath, options);
+  const bool converted =
+      EpubConverter::convertIfNeeded(epubPath, rsvpPath, options);
   const uint32_t elapsedMs = millis() - startedMs;
   logHeapSnapshot("after EPUB conversion");
 
   if (!converted || !fileExistsAndHasBytes(rsvpPath)) {
     Serial.printf("[storage] EPUB conversion failed after %lu ms: %s\n",
                   static_cast<unsigned long>(elapsedMs), epubPath.c_str());
-    notifyStatus("Preparing book", "EPUB conversion failed", "Check serial monitor", 100);
+    notifyStatus("Preparing book", "EPUB conversion failed",
+                 "Check serial monitor", 100);
     return false;
   }
 
   Serial.printf("[storage] EPUB conversion ready after %lu ms: %s\n",
                 static_cast<unsigned long>(elapsedMs), rsvpPath.c_str());
-  notifyStatus("Preparing book", displayNameForPath(rsvpPath).c_str(), "Conversion complete",
-               100);
+  notifyStatus("Preparing book", displayNameForPath(rsvpPath).c_str(),
+               "Conversion complete", 100);
   return true;
 }
 
-bool StorageManager::loadBookContent(size_t index, BookContent &book, String *loadedPath,
-                                     size_t *loadedIndex) {
+bool StorageManager::loadBookContent(size_t index, BookContent &book,
+                                     String *loadedPath, size_t *loadedIndex) {
   book.clear();
 
   if (!mounted_) {
@@ -2277,12 +2337,14 @@ bool StorageManager::loadBookContent(size_t index, BookContent &book, String *lo
     refreshBookPaths(false);
   }
   if (bookPaths_.empty()) {
-    Serial.println("[storage] No readable .rsvp, .txt, or .epub books found under /books");
+    Serial.println(
+        "[storage] No readable .rsvp, .txt, or .epub books found under /books");
     return false;
   }
 
   if (index >= bookPaths_.size()) {
-    Serial.printf("[storage] Book index %u out of range\n", static_cast<unsigned int>(index));
+    Serial.printf("[storage] Book index %u out of range\n",
+                  static_cast<unsigned int>(index));
     return false;
   }
 
@@ -2300,8 +2362,9 @@ bool StorageManager::loadBookContent(size_t index, BookContent &book, String *lo
       refreshBookPaths();
       const int convertedIndex = pathIndexIn(bookPaths_, rsvpPath);
       if (convertedIndex < 0) {
-        Serial.printf("[storage] Converted RSVP not found in refreshed library: %s\n",
-                      rsvpPath.c_str());
+        Serial.printf(
+            "[storage] Converted RSVP not found in refreshed library: %s\n",
+            rsvpPath.c_str());
         return false;
       }
 
@@ -2324,10 +2387,11 @@ bool StorageManager::loadBookContent(size_t index, BookContent &book, String *lo
       if (book.title.isEmpty()) {
         book.title = normalizeDisplayText(displayNameWithoutExtension(path));
       }
-      Serial.printf("[storage] Loaded %u words and %u chapters from %s in %lu ms\n",
-                    static_cast<unsigned int>(book.words.size()),
-                    static_cast<unsigned int>(book.chapters.size()), path.c_str(),
-                    static_cast<unsigned long>(parseElapsedMs));
+      Serial.printf(
+          "[storage] Loaded %u words and %u chapters from %s in %lu ms\n",
+          static_cast<unsigned int>(book.words.size()),
+          static_cast<unsigned int>(book.chapters.size()), path.c_str(),
+          static_cast<unsigned long>(parseElapsedMs));
       if (loadedPath != nullptr) {
         *loadedPath = path;
       }
@@ -2346,7 +2410,8 @@ bool StorageManager::loadBookContent(size_t index, BookContent &book, String *lo
   return false;
 }
 
-bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metadata,
+bool StorageManager::readIndexedMetadata(const String &path,
+                                         BookMetadata &metadata,
                                          IndexedBookStore::Header *headerOut) {
   metadata.clear();
 
@@ -2364,18 +2429,22 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
     if (source) {
       source.close();
     }
-    Serial.printf("[storage-index] source missing while validating index: %s\n", path.c_str());
+    Serial.printf("[storage-index] source missing while validating index: %s\n",
+                  path.c_str());
     return false;
   }
 
   const size_t sourceBytes = source.size();
   const uint32_t actualFingerprint =
-      sourceBytes <= UINT32_MAX ? sourceFingerprint(source, static_cast<uint32_t>(sourceBytes))
-                                : 0;
+      sourceBytes <= UINT32_MAX
+          ? sourceFingerprint(source, static_cast<uint32_t>(sourceBytes))
+          : 0;
   source.close();
-  if (sourceBytes > UINT32_MAX || header.sourceSize != static_cast<uint32_t>(sourceBytes) ||
+  if (sourceBytes > UINT32_MAX ||
+      header.sourceSize != static_cast<uint32_t>(sourceBytes) ||
       header.sourceFingerprint != actualFingerprint) {
-    Serial.printf("[storage-index] stale index: %s size=%lu/%lu fingerprint=%08lx/%08lx\n",
+    Serial.printf("[storage-index] stale index: %s size=%lu/%lu "
+                  "fingerprint=%08lx/%08lx\n",
                   path.c_str(), static_cast<unsigned long>(header.sourceSize),
                   static_cast<unsigned long>(sourceBytes),
                   static_cast<unsigned long>(header.sourceFingerprint),
@@ -2389,9 +2458,10 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
     if (data) {
       data.close();
     }
-    Serial.printf("[storage-index] data sidecar invalid: %s size=%lu expected=%lu\n",
-                  indexedDataPathFor(path).c_str(), static_cast<unsigned long>(dataBytes),
-                  static_cast<unsigned long>(header.dataSize));
+    Serial.printf(
+        "[storage-index] data sidecar invalid: %s size=%lu expected=%lu\n",
+        indexedDataPathFor(path).c_str(), static_cast<unsigned long>(dataBytes),
+        static_cast<unsigned long>(header.dataSize));
     return false;
   }
   data.close();
@@ -2418,9 +2488,10 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
     if (!indexFile.seek(header.paragraphsOffset)) {
       indexFile.close();
       metadata.clear();
-      Serial.printf("[storage-index] paragraph section seek failed: %s offset=%lu\n",
-                    indexedIndexPathFor(path).c_str(),
-                    static_cast<unsigned long>(header.paragraphsOffset));
+      Serial.printf(
+          "[storage-index] paragraph section seek failed: %s offset=%lu\n",
+          indexedIndexPathFor(path).c_str(),
+          static_cast<unsigned long>(header.paragraphsOffset));
       return false;
     }
     for (uint32_t i = 0; i < header.paragraphCount; ++i) {
@@ -2428,8 +2499,9 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
       if (!readExact(indexFile, &wordIndex, sizeof(wordIndex))) {
         indexFile.close();
         metadata.clear();
-        Serial.printf("[storage-index] paragraph section read failed: %s item=%lu\n",
-                      indexedIndexPathFor(path).c_str(), static_cast<unsigned long>(i));
+        Serial.printf(
+            "[storage-index] paragraph section read failed: %s item=%lu\n",
+            indexedIndexPathFor(path).c_str(), static_cast<unsigned long>(i));
         return false;
       }
       metadata.paragraphStarts.push_back(wordIndex);
@@ -2441,9 +2513,10 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
     if (!indexFile.seek(header.chaptersOffset)) {
       indexFile.close();
       metadata.clear();
-      Serial.printf("[storage-index] chapter section seek failed: %s offset=%lu\n",
-                    indexedIndexPathFor(path).c_str(),
-                    static_cast<unsigned long>(header.chaptersOffset));
+      Serial.printf(
+          "[storage-index] chapter section seek failed: %s offset=%lu\n",
+          indexedIndexPathFor(path).c_str(),
+          static_cast<unsigned long>(header.chaptersOffset));
       return false;
     }
     for (uint32_t i = 0; i < header.chapterCount; ++i) {
@@ -2451,8 +2524,9 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
       if (!readExact(indexFile, &record, sizeof(record))) {
         indexFile.close();
         metadata.clear();
-        Serial.printf("[storage-index] chapter section read failed: %s item=%lu\n",
-                      indexedIndexPathFor(path).c_str(), static_cast<unsigned long>(i));
+        Serial.printf(
+            "[storage-index] chapter section read failed: %s item=%lu\n",
+            indexedIndexPathFor(path).c_str(), static_cast<unsigned long>(i));
         return false;
       }
       ChapterMarker marker;
@@ -2477,14 +2551,15 @@ bool StorageManager::readIndexedMetadata(const String &path, BookMetadata &metad
     *headerOut = header;
   }
   if (metadata.wordCount == 0) {
-    Serial.printf("[storage-index] index has no words: %s\n", indexedIndexPathFor(path).c_str());
+    Serial.printf("[storage-index] index has no words: %s\n",
+                  indexedIndexPathFor(path).c_str());
     return false;
   }
   return true;
 }
 
-bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata,
-                                      bool rsvpFormat) {
+bool StorageManager::buildIndexedBook(const String &path,
+                                      BookMetadata &metadata, bool rsvpFormat) {
   metadata.clear();
 
   File source = SD_MMC.open(path, FILE_READ);
@@ -2493,7 +2568,8 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
       source.close();
     }
     Serial.printf("[storage-index] cannot open source: %s\n", path.c_str());
-    notifyStatus("Index failed", displayNameForPath(path).c_str(), "File unreadable", 100);
+    notifyStatus("Index failed", displayNameForPath(path).c_str(),
+                 "File unreadable", 100);
     return false;
   }
 
@@ -2503,14 +2579,17 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
     Serial.printf("[storage-index] unsupported source size: %s (%lu bytes)\n",
                   path.c_str(), static_cast<unsigned long>(sourceBytes));
     notifyStatus("Index failed", displayNameForPath(path).c_str(),
-                 sourceBytes == 0 ? "No readable words" : "Book too large", 100);
+                 sourceBytes == 0 ? "No readable words" : "Book too large",
+                 100);
     return false;
   }
-  const uint32_t fingerprint = sourceFingerprint(source, static_cast<uint32_t>(sourceBytes));
+  const uint32_t fingerprint =
+      sourceFingerprint(source, static_cast<uint32_t>(sourceBytes));
   if (!source.seek(0)) {
     source.close();
     Serial.printf("[storage-index] source rewind failed: %s\n", path.c_str());
-    notifyStatus("Index failed", displayNameForPath(path).c_str(), "Source read failed", 100);
+    notifyStatus("Index failed", displayNameForPath(path).c_str(),
+                 "Source read failed", 100);
     return false;
   }
 
@@ -2541,10 +2620,12 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
   const int dataOpenErrno = errno;
   if (!indexFile || !dataFile) {
     if (!indexFile) {
-      logFsErrno("storage-index", "open index FILE_WRITE", tmpIndexPath, indexOpenErrno);
+      logFsErrno("storage-index", "open index FILE_WRITE", tmpIndexPath,
+                 indexOpenErrno);
     }
     if (!dataFile) {
-      logFsErrno("storage-index", "open data FILE_WRITE", tmpDataPath, dataOpenErrno);
+      logFsErrno("storage-index", "open data FILE_WRITE", tmpDataPath,
+                 dataOpenErrno);
     }
     if (indexFile) {
       indexFile.close();
@@ -2603,7 +2684,8 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
     if (sourceBytes > 0 && totalBytesRead >= nextProgressBytes) {
       const int progress = static_cast<int>(
           std::min<size_t>(90, (totalBytesRead * 90UL) / sourceBytes));
-      notifyStatus("Indexing book", label.c_str(), "Building word index", progress);
+      notifyStatus("Indexing book", label.c_str(), "Building word index",
+                   progress);
       nextProgressBytes = totalBytesRead + 256 * 1024;
     }
     yield();
@@ -2617,11 +2699,14 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
 
       if (c == '\n') {
         keepReading = rsvpFormat
-                          ? processIndexedRsvpLine(line, context, paragraphPending, &stats)
-                          : processIndexedBookLine(line, context, paragraphPending, &stats);
+                          ? processIndexedRsvpLine(line, context,
+                                                   paragraphPending, &stats)
+                          : processIndexedBookLine(line, context,
+                                                   paragraphPending, &stats);
         if (!keepReading && hasBookWordLimit()) {
-          Serial.printf("[storage-index] Reached %lu word limit, truncating book\n",
-                        static_cast<unsigned long>(kMaxBookWords));
+          Serial.printf(
+              "[storage-index] Reached %lu word limit, truncating book\n",
+              static_cast<unsigned long>(kMaxBookWords));
         } else if (!keepReading && (stats.memoryLow || context.failed)) {
           parseFailed = true;
         }
@@ -2632,8 +2717,10 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
       line += c;
       if (line.length() >= kMaxBookLineChars) {
         keepReading = rsvpFormat
-                          ? processIndexedRsvpLine(line, context, paragraphPending, &stats)
-                          : processIndexedBookLine(line, context, paragraphPending, &stats);
+                          ? processIndexedRsvpLine(line, context,
+                                                   paragraphPending, &stats)
+                          : processIndexedBookLine(line, context,
+                                                   paragraphPending, &stats);
         ++stats.longLineSplits;
         if (!keepReading && (stats.memoryLow || context.failed)) {
           parseFailed = true;
@@ -2643,23 +2730,29 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
     }
   }
 
-  if (!line.isEmpty() && keepReading && !reachedBookWordLimit(context.wordCount)) {
-    keepReading = rsvpFormat ? processIndexedRsvpLine(line, context, paragraphPending, &stats)
-                             : processIndexedBookLine(line, context, paragraphPending, &stats);
+  if (!line.isEmpty() && keepReading &&
+      !reachedBookWordLimit(context.wordCount)) {
+    keepReading =
+        rsvpFormat
+            ? processIndexedRsvpLine(line, context, paragraphPending, &stats)
+            : processIndexedBookLine(line, context, paragraphPending, &stats);
     if (!keepReading && (stats.memoryLow || context.failed)) {
       parseFailed = true;
     }
   }
 
-  if (stats.longLineSplits > 0 || stats.malformedUtf8 > 0 || stats.nonAsciiCodepoints > 0) {
-    Serial.printf("[storage-index] Parse cleanup: long_lines=%u malformed_utf8=%u non_ascii=%u\n",
+  if (stats.longLineSplits > 0 || stats.malformedUtf8 > 0 ||
+      stats.nonAsciiCodepoints > 0) {
+    Serial.printf("[storage-index] Parse cleanup: long_lines=%u "
+                  "malformed_utf8=%u non_ascii=%u\n",
                   static_cast<unsigned int>(stats.longLineSplits),
                   static_cast<unsigned int>(stats.malformedUtf8),
                   static_cast<unsigned int>(stats.nonAsciiCodepoints));
   }
 
   if (parseFailed || context.wordCount == 0) {
-    const char *detail = context.failure[0] == '\0' ? "No readable words" : context.failure;
+    const char *detail =
+        context.failure[0] == '\0' ? "No readable words" : context.failure;
     indexWriter.discard();
     dataWriter.discard();
     indexFile.close();
@@ -2686,12 +2779,15 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
   header.sourceSize = static_cast<uint32_t>(sourceBytes);
   header.sourceFingerprint = fingerprint;
   header.wordCount = context.wordCount;
-  header.paragraphCount = static_cast<uint32_t>(metadata.paragraphStarts.size());
+  header.paragraphCount =
+      static_cast<uint32_t>(metadata.paragraphStarts.size());
   header.chapterCount = static_cast<uint32_t>(metadata.chapters.size());
   header.recordsOffset = sizeof(IndexedBookStore::Header);
   header.paragraphsOffset =
-      header.recordsOffset + header.wordCount * sizeof(IndexedBookStore::WordRecord);
-  header.chaptersOffset = header.paragraphsOffset + header.paragraphCount * sizeof(uint32_t);
+      header.recordsOffset +
+      header.wordCount * sizeof(IndexedBookStore::WordRecord);
+  header.chaptersOffset =
+      header.paragraphsOffset + header.paragraphCount * sizeof(uint32_t);
   header.dataSize = context.dataSize;
 
   if (!dataWriter.flush() || !indexWriter.seek(header.paragraphsOffset)) {
@@ -2699,7 +2795,8 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
   }
 
   for (size_t i = 0; !parseFailed && i < metadata.paragraphStarts.size(); ++i) {
-    const uint32_t wordIndex = static_cast<uint32_t>(metadata.paragraphStarts[i]);
+    const uint32_t wordIndex =
+        static_cast<uint32_t>(metadata.paragraphStarts[i]);
     parseFailed = !indexWriter.write(&wordIndex, sizeof(wordIndex));
   }
 
@@ -2711,7 +2808,8 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
     IndexedBookStore::ChapterRecord record;
     record.wordIndex = static_cast<uint32_t>(metadata.chapters[i].wordIndex);
     const String &title = metadata.chapters[i].title;
-    record.titleLength = std::min<uint32_t>(title.length(), sizeof(record.title));
+    record.titleLength =
+        std::min<uint32_t>(title.length(), sizeof(record.title));
     for (uint32_t j = 0; j < record.titleLength; ++j) {
       record.title[j] = title[j];
     }
@@ -2753,10 +2851,12 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
   const bool renamed = indexRenamed && dataRenamed;
   if (!renamed) {
     if (!indexRenamed) {
-      logFsErrno("storage-index", "rename index", tmpIndexPath, indexPath, indexRenameErrno);
+      logFsErrno("storage-index", "rename index", tmpIndexPath, indexPath,
+                 indexRenameErrno);
     }
     if (indexRenamed && !dataRenamed) {
-      logFsErrno("storage-index", "rename data", tmpDataPath, dataPath, dataRenameErrno);
+      logFsErrno("storage-index", "rename data", tmpDataPath, dataPath,
+                 dataRenameErrno);
     }
     SD_MMC.remove(tmpIndexPath);
     SD_MMC.remove(tmpDataPath);
@@ -2767,34 +2867,42 @@ bool StorageManager::buildIndexedBook(const String &path, BookMetadata &metadata
     return false;
   }
 
-  Serial.printf("[storage-index] Built %u words, %u chapters from %s in %lu ms\n",
-                static_cast<unsigned int>(metadata.wordCount),
-                static_cast<unsigned int>(metadata.chapters.size()), path.c_str(),
-                static_cast<unsigned long>(millis() - startedMs));
+  Serial.printf(
+      "[storage-index] Built %u words, %u chapters from %s in %lu ms\n",
+      static_cast<unsigned int>(metadata.wordCount),
+      static_cast<unsigned int>(metadata.chapters.size()), path.c_str(),
+      static_cast<unsigned long>(millis() - startedMs));
   notifyStatus("Index ready", label.c_str(), "Book ready", 100);
   return true;
 }
 
-bool StorageManager::ensureIndexedBook(const String &path, BookMetadata &metadata,
-                                       bool rsvpFormat, bool allowIndexBuild) {
+bool StorageManager::ensureIndexedBook(const String &path,
+                                       BookMetadata &metadata, bool rsvpFormat,
+                                       bool allowIndexBuild) {
   if (readIndexedMetadata(path, metadata)) {
-    notifyStatus("Opening book", displayNameForPath(path).c_str(), "Index is current", 45);
+    notifyStatus("Opening book", displayNameForPath(path).c_str(),
+                 "Index is current", 45);
     return true;
   }
 
   if (!allowIndexBuild) {
-    notifyStatus("Index needed", displayNameForPath(path).c_str(), "Open from library", 100);
+    notifyStatus("Index needed", displayNameForPath(path).c_str(),
+                 "Open from library", 100);
     return false;
   }
 
-  Serial.printf("[storage-index] rebuilding missing/stale index: %s\n", path.c_str());
-  notifyStatus("Opening book", displayNameForPath(path).c_str(), "Index needs rebuild", 20);
+  Serial.printf("[storage-index] rebuilding missing/stale index: %s\n",
+                path.c_str());
+  notifyStatus("Opening book", displayNameForPath(path).c_str(),
+               "Index needs rebuild", 20);
   if (!buildIndexedBook(path, metadata, rsvpFormat)) {
     return false;
   }
   if (!readIndexedMetadata(path, metadata)) {
-    Serial.printf("[storage-index] freshly built index failed validation: %s\n", path.c_str());
-    notifyStatus("Index failed", displayNameForPath(path).c_str(), "Validation failed", 100);
+    Serial.printf("[storage-index] freshly built index failed validation: %s\n",
+                  path.c_str());
+    notifyStatus("Index failed", displayNameForPath(path).c_str(),
+                 "Validation failed", 100);
     return false;
   }
   return true;
@@ -2822,13 +2930,15 @@ bool StorageManager::loadIndexedBook(size_t index, IndexedBookStore &store,
     refreshBookPaths(false);
   }
   if (bookPaths_.empty()) {
-    Serial.println("[storage] No readable .rsvp, .txt, or .epub books found under /books");
+    Serial.println(
+        "[storage] No readable .rsvp, .txt, or .epub books found under /books");
     notifyStatus("Book open failed", "No books found", "Add books to SD", 100);
     return false;
   }
 
   if (index >= bookPaths_.size()) {
-    Serial.printf("[storage] Book index %u out of range\n", static_cast<unsigned int>(index));
+    Serial.printf("[storage] Book index %u out of range\n",
+                  static_cast<unsigned int>(index));
     notifyStatus("Book open failed", "Library changed", "Open list again", 100);
     return false;
   }
@@ -2837,7 +2947,8 @@ bool StorageManager::loadIndexedBook(size_t index, IndexedBookStore &store,
   size_t parsedIndex = index;
   if (hasEpubExtension(path)) {
     if (!allowEpubConversion) {
-      notifyStatus("Index needed", displayNameForPath(path).c_str(), "Open from library", 100);
+      notifyStatus("Index needed", displayNameForPath(path).c_str(),
+                   "Open from library", 100);
       return false;
     }
 
@@ -2849,8 +2960,9 @@ bool StorageManager::loadIndexedBook(size_t index, IndexedBookStore &store,
     refreshBookPaths();
     const int convertedIndex = pathIndexIn(bookPaths_, rsvpPath);
     if (convertedIndex < 0) {
-      Serial.printf("[storage] Converted RSVP not found in refreshed library: %s\n",
-                    rsvpPath.c_str());
+      Serial.printf(
+          "[storage] Converted RSVP not found in refreshed library: %s\n",
+          rsvpPath.c_str());
       notifyStatus("Book open failed", displayNameForPath(path).c_str(),
                    "Conversion cache missing", 100);
       return false;
@@ -2865,14 +2977,18 @@ bool StorageManager::loadIndexedBook(size_t index, IndexedBookStore &store,
     if (entry) {
       entry.close();
     }
-    Serial.printf("[storage] Selected book is not readable: %s\n", path.c_str());
-    notifyStatus("Book open failed", displayNameForPath(path).c_str(), "File unreadable", 100);
+    Serial.printf("[storage] Selected book is not readable: %s\n",
+                  path.c_str());
+    notifyStatus("Book open failed", displayNameForPath(path).c_str(),
+                 "File unreadable", 100);
     return false;
   }
   entry.close();
 
-  notifyStatus("Opening book", displayNameForPath(path).c_str(), "Checking index", 12);
-  if (!ensureIndexedBook(path, metadata, hasRsvpExtension(path), allowIndexBuild)) {
+  notifyStatus("Opening book", displayNameForPath(path).c_str(),
+               "Checking index", 12);
+  if (!ensureIndexedBook(path, metadata, hasRsvpExtension(path),
+                         allowIndexBuild)) {
     metadata.clear();
     return false;
   }
@@ -2880,14 +2996,18 @@ bool StorageManager::loadIndexedBook(size_t index, IndexedBookStore &store,
   IndexedBookStore::Header header;
   if (!readIndexedMetadata(path, metadata, &header)) {
     metadata.clear();
-    notifyStatus("Book open failed", displayNameForPath(path).c_str(), "Index invalid", 100);
+    notifyStatus("Book open failed", displayNameForPath(path).c_str(),
+                 "Index invalid", 100);
     return false;
   }
 
-  notifyStatus("Opening book", displayNameForPath(path).c_str(), "Opening word cache", 80);
-  if (!store.open(indexedIndexPathFor(path), indexedDataPathFor(path), header)) {
+  notifyStatus("Opening book", displayNameForPath(path).c_str(),
+               "Opening word cache", 80);
+  if (!store.open(indexedIndexPathFor(path), indexedDataPathFor(path),
+                  header)) {
     metadata.clear();
-    notifyStatus("Book open failed", displayNameForPath(path).c_str(), "Index unreadable", 100);
+    notifyStatus("Book open failed", displayNameForPath(path).c_str(),
+                 "Index unreadable", 100);
     return false;
   }
 
@@ -2898,14 +3018,14 @@ bool StorageManager::loadIndexedBook(size_t index, IndexedBookStore &store,
     *loadedIndex = parsedIndex;
   }
 
-  Serial.printf("[storage] Opened indexed book %s: %u words, %u chapters\n", path.c_str(),
-                static_cast<unsigned int>(metadata.wordCount),
+  Serial.printf("[storage] Opened indexed book %s: %u words, %u chapters\n",
+                path.c_str(), static_cast<unsigned int>(metadata.wordCount),
                 static_cast<unsigned int>(metadata.chapters.size()));
   return true;
 }
 
-bool StorageManager::loadBookWords(size_t index, std::vector<String> &words, String *loadedPath,
-                                   size_t *loadedIndex) {
+bool StorageManager::loadBookWords(size_t index, std::vector<String> &words,
+                                   String *loadedPath, size_t *loadedIndex) {
   BookContent book;
   if (!loadBookContent(index, book, loadedPath, loadedIndex)) {
     words.clear();
@@ -2921,7 +3041,8 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
   notifyStatus("SD check", "Mounting card", "", 5);
 
   if (!mounted_) {
-    if (!SD_MMC.setPins(BoardConfig::PIN_SD_CLK, BoardConfig::PIN_SD_CMD, BoardConfig::PIN_SD_D0)) {
+    if (!SD_MMC.setPins(BoardConfig::PIN_SD_CLK, BoardConfig::PIN_SD_CMD,
+                        BoardConfig::PIN_SD_D0)) {
       result.summary = "Pin setup failed";
       result.detail = "Check SD wiring";
       Serial.println("[sd-check] SD_MMC pin setup failed");
@@ -2942,28 +3063,30 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
   if (!mounted_) {
     result.summary = "Card not mounted";
     result.detail = "Format FAT32 MBR";
-    Serial.println("[sd-check] mount failed; likely format/partition issue, seating, or card fault");
+    Serial.println("[sd-check] mount failed; likely format/partition issue, "
+                   "seating, or card fault");
     return result;
   }
 
   result.sizeMb = SD_MMC.cardSize() / (1024ULL * 1024ULL);
   result.cardType = cardTypeLabel(SD_MMC.cardType());
-  Serial.printf("[sd-check] mounted type=%s size=%llu MB\n", result.cardType.c_str(),
-                result.sizeMb);
+  Serial.printf("[sd-check] mounted type=%s size=%llu MB\n",
+                result.cardType.c_str(), result.sizeMb);
 
   notifyStatus("SD check", "Checking folders", "", 30);
   result.booksDirectory = directoryExists(kBooksPath);
   result.bookFilesDirectory = directoryExists(kBookFilesPath);
   result.articleFilesDirectory = directoryExists(kArticleFilesPath);
   result.configDirectory = directoryExists("/config");
-  if (!result.booksDirectory || !result.bookFilesDirectory || !result.articleFilesDirectory ||
-      !result.configDirectory) {
+  if (!result.booksDirectory || !result.bookFilesDirectory ||
+      !result.articleFilesDirectory || !result.configDirectory) {
     result.summary = "Folders missing";
     result.detail = "Can create layout";
-    Serial.printf("[sd-check] v0.0.4 folders missing /books=%u /books/books=%u "
-                  "/books/articles=%u /config=%u\n",
-                  result.booksDirectory ? 1 : 0, result.bookFilesDirectory ? 1 : 0,
-                  result.articleFilesDirectory ? 1 : 0, result.configDirectory ? 1 : 0);
+    Serial.printf(
+        "[sd-check] v0.0.4 folders missing /books=%u /books/books=%u "
+        "/books/articles=%u /config=%u\n",
+        result.booksDirectory ? 1 : 0, result.bookFilesDirectory ? 1 : 0,
+        result.articleFilesDirectory ? 1 : 0, result.configDirectory ? 1 : 0);
     notifyStatus("SD check", "Folders missing", "Confirm repair", 38);
     return result;
   }
@@ -2985,12 +3108,14 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
     Serial.println("[sd-check] /books write/delete probe failed");
     return result;
   }
-  if (!result.booksWritable || !result.articlesWritable || !result.configWritable) {
+  if (!result.booksWritable || !result.articlesWritable ||
+      !result.configWritable) {
     result.summary = "Folder write failed";
     result.detail = "Format FAT32 MBR";
-    Serial.printf("[sd-check] folder write failed books=%u articles=%u config=%u\n",
-                  result.booksWritable ? 1 : 0, result.articlesWritable ? 1 : 0,
-                  result.configWritable ? 1 : 0);
+    Serial.printf(
+        "[sd-check] folder write failed books=%u articles=%u config=%u\n",
+        result.booksWritable ? 1 : 0, result.articlesWritable ? 1 : 0,
+        result.configWritable ? 1 : 0);
     return result;
   }
 
@@ -3007,10 +3132,12 @@ StorageManager::DiagnosticResult StorageManager::diagnoseSdCard() {
   }
 
   result.summary = String(result.bookCount) + " books OK";
-  result.detail = result.cardType + " " + String(static_cast<unsigned int>(result.sizeMb)) + " MB";
+  result.detail = result.cardType + " " +
+                  String(static_cast<unsigned int>(result.sizeMb)) + " MB";
   Serial.printf("[sd-check] OK books=%u unsupported=%u writable=%u\n",
                 static_cast<unsigned int>(result.bookCount),
-                static_cast<unsigned int>(result.unsupportedCount), result.writable ? 1 : 0);
+                static_cast<unsigned int>(result.unsupportedCount),
+                result.writable ? 1 : 0);
   return result;
 }
 
@@ -3033,7 +3160,8 @@ bool StorageManager::repairSdCardFolders() {
   if (ok) {
     Serial.println("[sd-check] repaired v0.0.4 folder layout");
   } else {
-    Serial.printf("[sd-check] folder repair failed rootWritable=%u /books=%u /books/books=%u "
+    Serial.printf("[sd-check] folder repair failed rootWritable=%u /books=%u "
+                  "/books/books=%u "
                   "/books/articles=%u /config=%u\n",
                   rootWritable ? 1 : 0, booksOk ? 1 : 0, bookFilesOk ? 1 : 0,
                   articleFilesOk ? 1 : 0, configOk ? 1 : 0);
@@ -3071,10 +3199,12 @@ void StorageManager::refreshBookPaths(bool includeMetadata) {
     }
   }
 
-  Serial.printf("[storage] Library scan: %u books (%u rsvp, %u txt, %u pending epub)\n",
-                static_cast<unsigned int>(bookPaths_.size()),
-                static_cast<unsigned int>(rsvpCount), static_cast<unsigned int>(textCount),
-                static_cast<unsigned int>(pendingEpubCount));
+  Serial.printf(
+      "[storage] Library scan: %u books (%u rsvp, %u txt, %u pending epub)\n",
+      static_cast<unsigned int>(bookPaths_.size()),
+      static_cast<unsigned int>(rsvpCount),
+      static_cast<unsigned int>(textCount),
+      static_cast<unsigned int>(pendingEpubCount));
 }
 
 void StorageManager::rebuildBookMetadataCache() {
@@ -3146,15 +3276,18 @@ bool StorageManager::parseFile(File &file, BookContent &book, bool rsvpFormat) {
       }
 
       if (c == '\n') {
-        keepReading = rsvpFormat ? processRsvpLine(line, book, paragraphPending, &stats)
-                                 : processBookLine(line, book, paragraphPending, &stats);
+        keepReading =
+            rsvpFormat ? processRsvpLine(line, book, paragraphPending, &stats)
+                       : processBookLine(line, book, paragraphPending, &stats);
         if (!keepReading && hasBookWordLimit()) {
           Serial.printf("[storage] Reached %lu word limit, truncating book\n",
                         static_cast<unsigned long>(kMaxBookWords));
         } else if (!keepReading && stats.memoryLow) {
           parseFailed = true;
-          Serial.printf("[storage] Book load stopped: low memory free8=%lu largest8=%lu\n",
-                        static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+          Serial.printf("[storage] Book load stopped: low memory free8=%lu "
+                        "largest8=%lu\n",
+                        static_cast<unsigned long>(
+                            heap_caps_get_free_size(MALLOC_CAP_8BIT)),
                         static_cast<unsigned long>(
                             heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
         }
@@ -3164,13 +3297,16 @@ bool StorageManager::parseFile(File &file, BookContent &book, bool rsvpFormat) {
 
       line += c;
       if (line.length() >= kMaxBookLineChars) {
-        keepReading = rsvpFormat ? processRsvpLine(line, book, paragraphPending, &stats)
-                                 : processBookLine(line, book, paragraphPending, &stats);
+        keepReading =
+            rsvpFormat ? processRsvpLine(line, book, paragraphPending, &stats)
+                       : processBookLine(line, book, paragraphPending, &stats);
         ++stats.longLineSplits;
         if (!keepReading && stats.memoryLow) {
           parseFailed = true;
-          Serial.printf("[storage] Book load stopped: low memory free8=%lu largest8=%lu\n",
-                        static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+          Serial.printf("[storage] Book load stopped: low memory free8=%lu "
+                        "largest8=%lu\n",
+                        static_cast<unsigned long>(
+                            heap_caps_get_free_size(MALLOC_CAP_8BIT)),
                         static_cast<unsigned long>(
                             heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
         }
@@ -3179,7 +3315,8 @@ bool StorageManager::parseFile(File &file, BookContent &book, bool rsvpFormat) {
     }
   }
 
-  if (!line.isEmpty() && keepReading && !reachedBookWordLimit(book.words.size())) {
+  if (!line.isEmpty() && keepReading &&
+      !reachedBookWordLimit(book.words.size())) {
     if (rsvpFormat) {
       keepReading = processRsvpLine(line, book, paragraphPending, &stats);
     } else {
@@ -3190,8 +3327,10 @@ bool StorageManager::parseFile(File &file, BookContent &book, bool rsvpFormat) {
     }
   }
 
-  if (stats.longLineSplits > 0 || stats.malformedUtf8 > 0 || stats.nonAsciiCodepoints > 0) {
-    Serial.printf("[storage] Parse cleanup: long_lines=%u malformed_utf8=%u non_ascii=%u\n",
+  if (stats.longLineSplits > 0 || stats.malformedUtf8 > 0 ||
+      stats.nonAsciiCodepoints > 0) {
+    Serial.printf("[storage] Parse cleanup: long_lines=%u malformed_utf8=%u "
+                  "non_ascii=%u\n",
                   static_cast<unsigned int>(stats.longLineSplits),
                   static_cast<unsigned int>(stats.malformedUtf8),
                   static_cast<unsigned int>(stats.nonAsciiCodepoints));
@@ -3199,7 +3338,8 @@ bool StorageManager::parseFile(File &file, BookContent &book, bool rsvpFormat) {
 
   if (parseFailed) {
     book.clear();
-    notifyStatus("Book too large", "Memory limit reached", "Try converter/app", 100);
+    notifyStatus("Book too large", "Memory limit reached", "Try converter/app",
+                 100);
     return false;
   }
 
