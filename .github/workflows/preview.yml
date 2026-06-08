@@ -89,19 +89,27 @@ jobs:
         run: |
           FULL_BIN="$(find . -type f -name 'rsvp-nano.bin' -not -path './.git/*' -print -quit)"
           OTA_BIN="$(find . -type f -name 'rsvp-nano-ota.bin' -not -path './.git/*' -print -quit)"
+          REV2_FULL_BIN="$(find . -type f -name 'rsvp-nano-rev2.bin' -not -path './.git/*' -print -quit)"
+          REV2_OTA_BIN="$(find . -type f -name 'rsvp-nano-rev2-ota.bin' -not -path './.git/*' -print -quit)"
 
-          if [ -z "$FULL_BIN" ] || [ -z "$OTA_BIN" ]; then
+          if [ -z "$FULL_BIN" ] || [ -z "$OTA_BIN" ] || [ -z "$REV2_FULL_BIN" ] || [ -z "$REV2_OTA_BIN" ]; then
             echo "::error::Could not find firmware assets."
             echo "FULL_BIN=$FULL_BIN"
             echo "OTA_BIN=$OTA_BIN"
+            echo "REV2_FULL_BIN=$REV2_FULL_BIN"
+            echo "REV2_OTA_BIN=$REV2_OTA_BIN"
             exit 1
           fi
 
           echo "full=$FULL_BIN" >> "$GITHUB_OUTPUT"
           echo "ota=$OTA_BIN" >> "$GITHUB_OUTPUT"
+          echo "rev2_full=$REV2_FULL_BIN" >> "$GITHUB_OUTPUT"
+          echo "rev2_ota=$REV2_OTA_BIN" >> "$GITHUB_OUTPUT"
 
           echo "[preview] Full image: $FULL_BIN"
           echo "[preview] OTA image: $OTA_BIN"
+          echo "[preview] Rev2 full image: $REV2_FULL_BIN"
+          echo "[preview] Rev2 OTA image: $REV2_OTA_BIN"
 
       - name: Write preview release notes
         run: |
@@ -113,8 +121,10 @@ jobs:
           Build version: \`${{ steps.preview.outputs.version }}\`
 
           Assets:
-          - \`rsvp-nano.bin\` is the full browser-flasher image for fresh installs.
-          - \`rsvp-nano-ota.bin\` is the app-only binary used by OTA updates.
+          - \`rsvp-nano.bin\` is the default rev1 full browser-flasher image.
+          - \`rsvp-nano-ota.bin\` is the default rev1 app-only OTA binary.
+          - \`rsvp-nano-rev2.bin\` is the rev2 full browser-flasher image for GPIO42 backlight boards.
+          - \`rsvp-nano-rev2-ota.bin\` is the rev2 app-only OTA binary.
           NOTES
 
       - name: Move preview tag to this commit
@@ -137,6 +147,8 @@ jobs:
           BUILD_SHA: ${{ steps.preview.outputs.commit_sha }}
           FULL_BIN: ${{ steps.assets.outputs.full }}
           OTA_BIN: ${{ steps.assets.outputs.ota }}
+          REV2_FULL_BIN: ${{ steps.assets.outputs.rev2_full }}
+          REV2_OTA_BIN: ${{ steps.assets.outputs.rev2_ota }}
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release edit "$RELEASE_TAG" \
@@ -155,4 +167,6 @@ jobs:
           gh release upload "$RELEASE_TAG" \
             "$FULL_BIN" \
             "$OTA_BIN" \
+            "$REV2_FULL_BIN" \
+            "$REV2_OTA_BIN" \
             --clobber

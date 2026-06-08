@@ -107,8 +107,10 @@ jobs:
           RSVP Nano firmware release.
 
           Assets:
-          - `rsvp-nano.bin` is the full browser-flasher image for fresh installs.
-          - `rsvp-nano-ota.bin` is the app-only binary used by OTA updates.
+          - `rsvp-nano.bin` is the default rev1 full browser-flasher image.
+          - `rsvp-nano-ota.bin` is the default rev1 app-only OTA binary.
+          - `rsvp-nano-rev2.bin` is the rev2 full browser-flasher image for GPIO42 backlight boards.
+          - `rsvp-nano-rev2-ota.bin` is the rev2 app-only OTA binary.
           NOTES
           fi
 
@@ -121,6 +123,8 @@ jobs:
           gh release create "$RELEASE_TAG" \
             web/firmware/rsvp-nano.bin \
             web/firmware/rsvp-nano-ota.bin \
+            web/firmware/rsvp-nano-rev2.bin \
+            web/firmware/rsvp-nano-rev2-ota.bin \
             --title "$RELEASE_TAG" \
             --notes-file release-notes.md \
             --target "$BUILD_SHA"
