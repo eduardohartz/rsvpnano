@@ -243,9 +243,38 @@ namespace SdDiagnostics {
             return path;
         }
 
+        bool tryMountFrequency(bool& mounted, int frequencyKhz) {
+            Serial.printf("[sd-check] trying mount at %d kHz\n", frequencyKhz);
+            SD_MMC.end();
+            mounted = SD_MMC.begin(StoragePaths::kMountPoint, true, false, frequencyKhz, 5);
+            if (!mounted) {
+                return false;
+            }
+            if (!writeReadProbeFile(kFrequencyProbePath, kFrequencyProbeBytes, "sd-probe")) {
+                Serial.printf("[sd-check] frequency %d kHz failed sustained probe\n", frequencyKhz);
+                SD_MMC.end();
+                mounted = false;
+                return false;
+            }
+            return true;
+        }
+
+        void recordMountedFrequency(int frequencyKhz, int* mountedFrequencyKhz) {
+            sMountedFrequencyKhz = frequencyKhz;
+            if (mountedFrequencyKhz != nullptr) {
+                *mountedFrequencyKhz = frequencyKhz;
+            }
+        }
+
+        void unmountCard(bool& mounted) {
+            SD_MMC.end();
+            mounted = false;
+            sMountedFrequencyKhz = 0;
+        }
+
     } // namespace
 
-    bool mountCard(bool& mounted, int* mountedFrequencyKhz) {
+    bool mountCardWithCache(bool& mounted, int* mountedFrequencyKhz, bool allowCache) {
         if (mounted) {
             if (mountedFrequencyKhz != nullptr) {
                 *mountedFrequencyKhz = sMountedFrequencyKhz;
@@ -260,49 +289,26 @@ namespace SdDiagnostics {
 
         FrequencyList frequencyOrder;
         const size_t frequencyCount = buildFrequencyProbeOrder(frequencyOrder);
-        const FrequencyCache cache = readFrequencyCache();
 
-        auto tryMountFrequency = [&](int frequencyKhz) {
-            Serial.printf("[sd-check] trying mount at %d kHz\n", frequencyKhz);
-            SD_MMC.end();
-            mounted = SD_MMC.begin(StoragePaths::kMountPoint, true, false, frequencyKhz, 5);
-            if (!mounted) {
-                return false;
-            }
-            if (!writeReadProbeFile(kFrequencyProbePath, kFrequencyProbeBytes, "sd-probe")) {
-                Serial.printf("[sd-check] frequency %d kHz failed sustained probe\n", frequencyKhz);
-                SD_MMC.end();
-                mounted = false;
-                return false;
-            }
-            return true;
-        };
-
-        if (cache.valid) {
+        const FrequencyCache cache = allowCache ? readFrequencyCache() : FrequencyCache{};
+        if (allowCache && cache.valid) {
             Serial.printf("[sd-check] trying cached SD frequency %d kHz\n", cache.frequencyKhz);
-            if (tryMountFrequency(cache.frequencyKhz)) {
+            if (tryMountFrequency(mounted, cache.frequencyKhz)) {
                 if (cacheMatchesMountedCard(cache)) {
-                    sMountedFrequencyKhz = cache.frequencyKhz;
-                    if (mountedFrequencyKhz != nullptr) {
-                        *mountedFrequencyKhz = cache.frequencyKhz;
-                    }
+                    recordMountedFrequency(cache.frequencyKhz, mountedFrequencyKhz);
                     Serial.printf("[sd-check] selected cached SD frequency %d kHz\n", cache.frequencyKhz);
                     return true;
                 }
 
                 Serial.println("[sd-check] cached SD frequency belongs to a different card; rediscovering");
-                SD_MMC.end();
-                mounted = false;
+                unmountCard(mounted);
             }
         }
 
         for (size_t i = 0; i < frequencyCount; ++i) {
             const int frequencyKhz = frequencyOrder[i];
-            if (tryMountFrequency(frequencyKhz)) {
-                sMountedFrequencyKhz = frequencyKhz;
-                if (mountedFrequencyKhz != nullptr) {
-                    *mountedFrequencyKhz = frequencyKhz;
-                }
+            if (tryMountFrequency(mounted, frequencyKhz)) {
+                recordMountedFrequency(frequencyKhz, mountedFrequencyKhz);
                 Serial.printf("[sd-check] selected SD frequency %d kHz\n", frequencyKhz);
                 writeFrequencyCache(frequencyKhz);
                 return true;
@@ -310,6 +316,33 @@ namespace SdDiagnostics {
         }
         sMountedFrequencyKhz = 0;
         return false;
+    }
+
+    bool mountCard(bool& mounted, int* mountedFrequencyKhz) {
+        return mountCardWithCache(mounted, mountedFrequencyKhz, true);
+    }
+
+    bool validateMountedFrequency(bool& mounted, int* mountedFrequencyKhz) {
+        if (!mounted) {
+            return mountCard(mounted, mountedFrequencyKhz);
+        }
+        if (!isSupportedFrequency(sMountedFrequencyKhz)) {
+            Serial.println("[sd-check] mounted frequency unknown; rediscovering");
+            unmountCard(mounted);
+            return mountCardWithCache(mounted, mountedFrequencyKhz, false);
+        }
+
+        Serial.printf("[sd-check] validating mounted frequency %d kHz\n", sMountedFrequencyKhz);
+        if (writeReadProbeFile(kFrequencyProbePath, kFrequencyProbeBytes, "sd-probe")) {
+            if (mountedFrequencyKhz != nullptr) {
+                *mountedFrequencyKhz = sMountedFrequencyKhz;
+            }
+            return true;
+        }
+
+        Serial.printf("[sd-check] mounted frequency %d kHz failed; rediscovering\n", sMountedFrequencyKhz);
+        unmountCard(mounted);
+        return mountCardWithCache(mounted, mountedFrequencyKhz, false);
     }
 
     bool verifyWritableFolder(const char* directoryPath) {
@@ -331,8 +364,8 @@ namespace SdDiagnostics {
         };
         report("Mounting card", "", 5);
 
-        // Mount and identify the card before checking the filesystem contract.
-        if (!mountCard(mounted, &result.frequencyKhz)) {
+        // Validate the selected SD clock before checking the filesystem contract.
+        if (!validateMountedFrequency(mounted, &result.frequencyKhz)) {
             result.summary = "Card not mounted";
             result.detail = "Format FAT32 MBR";
         }
