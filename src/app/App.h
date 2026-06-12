@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "app/AppState.h"
-#include "app/Localization.h"
 #include "audio/AudioManager.h"
 #include "display/DisplayManager.h"
 #include "input/ButtonHandler.h"
@@ -18,6 +17,7 @@
 #include "storage/StorageManager.h"
 #include "sync/CompanionSyncManager.h"
 #include "timer/FocusTimer.h"
+#include "ui/Localization.h"
 #include "update/OtaUpdater.h"
 #include "usb/UsbMassStorageManager.h"
 
