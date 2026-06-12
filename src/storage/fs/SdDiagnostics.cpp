@@ -30,9 +30,18 @@ namespace SdDiagnostics {
         constexpr size_t kProbeChunkBytes = 4096;
         constexpr const char* kPreferencesNamespace = "sd_diag";
         constexpr const char* kPreferenceFrequencyKhz = "freq_khz";
+        constexpr const char* kPreferenceCardType = "card_type";
+        constexpr const char* kPreferenceCardSizeMb = "size_mb";
         constexpr const char* kFrequencyProbePath = "/.sdfreq.tmp";
         constexpr const char* kFolderProbeName = ".sdcheck.tmp";
         int sMountedFrequencyKhz = 0;
+
+        struct FrequencyCache {
+            int frequencyKhz = 0;
+            uint8_t cardType = CARD_NONE;
+            uint32_t sizeMb = 0;
+            bool valid = false;
+        };
 
         const char* cardTypeLabel(uint8_t cardType, uint64_t sizeMb) {
             switch (cardType) {
@@ -59,29 +68,45 @@ namespace SdDiagnostics {
                 != kSdFrequenciesKhz.end();
         }
 
-        int readCachedFrequencyKhz() {
+        uint32_t currentCardSizeMb() {
+            return static_cast<uint32_t>(SD_MMC.cardSize() / kBytesPerMegabyte);
+        }
+
+        FrequencyCache readFrequencyCache() {
             Preferences preferences;
             if (!preferences.begin(kPreferencesNamespace, true)) {
                 Serial.println("[sd-check] frequency cache unavailable");
-                return 0;
+                return {};
             }
-            const int frequencyKhz = preferences.getInt(kPreferenceFrequencyKhz, 0);
+            FrequencyCache cache;
+            cache.frequencyKhz = preferences.getInt(kPreferenceFrequencyKhz, 0);
+            cache.cardType = preferences.getUChar(kPreferenceCardType, CARD_NONE);
+            cache.sizeMb = preferences.getUInt(kPreferenceCardSizeMb, 0);
             preferences.end();
-            if (!isSupportedFrequency(frequencyKhz)) {
-                if (frequencyKhz != 0) {
-                    Serial.printf("[sd-check] ignoring unsupported cached frequency %d kHz\n", frequencyKhz);
+            if (!isSupportedFrequency(cache.frequencyKhz) || cache.cardType == CARD_NONE || cache.sizeMb == 0) {
+                if (cache.frequencyKhz != 0) {
+                    Serial.printf("[sd-check] ignoring incomplete cached frequency %d kHz\n", cache.frequencyKhz);
                 }
-                return 0;
+                return {};
             }
-            return frequencyKhz;
+            cache.valid = true;
+            return cache;
         }
 
-        void writeCachedFrequencyKhz(int frequencyKhz) {
+        bool cacheMatchesMountedCard(const FrequencyCache& cache) {
+            return cache.valid && cache.cardType == SD_MMC.cardType() && cache.sizeMb == currentCardSizeMb();
+        }
+
+        void writeFrequencyCache(int frequencyKhz) {
             if (!isSupportedFrequency(frequencyKhz)) {
                 return;
             }
 
-            if (readCachedFrequencyKhz() == frequencyKhz) {
+            const uint8_t cardType = SD_MMC.cardType();
+            const uint32_t sizeMb = currentCardSizeMb();
+            const FrequencyCache cache = readFrequencyCache();
+            if (cache.valid && cache.frequencyKhz == frequencyKhz && cache.cardType == cardType
+                && cache.sizeMb == sizeMb) {
                 return;
             }
 
@@ -91,12 +116,13 @@ namespace SdDiagnostics {
                 return;
             }
             preferences.putInt(kPreferenceFrequencyKhz, frequencyKhz);
+            preferences.putUChar(kPreferenceCardType, cardType);
+            preferences.putUInt(kPreferenceCardSizeMb, sizeMb);
             preferences.end();
         }
 
         size_t buildFrequencyProbeOrder(FrequencyList& frequencies) {
             size_t count = 0;
-            const int cachedFrequencyKhz = readCachedFrequencyKhz();
 
             for (int candidate: kSdFrequenciesKhz) {
                 const bool alreadyQueued = std::find(frequencies.begin(), frequencies.begin() + count, candidate)
@@ -104,10 +130,6 @@ namespace SdDiagnostics {
                 if (!alreadyQueued && count < frequencies.size()) {
                     frequencies[count++] = candidate;
                 }
-            }
-            if (cachedFrequencyKhz != 0) {
-                Serial.printf("[sd-check] cached SD frequency %d kHz; probing highest stable frequency first\n",
-                              cachedFrequencyKhz);
             }
             return count;
         }
@@ -238,6 +260,7 @@ namespace SdDiagnostics {
 
         FrequencyList frequencyOrder;
         const size_t frequencyCount = buildFrequencyProbeOrder(frequencyOrder);
+        const FrequencyCache cache = readFrequencyCache();
 
         auto tryMountFrequency = [&](int frequencyKhz) {
             Serial.printf("[sd-check] trying mount at %d kHz\n", frequencyKhz);
@@ -255,6 +278,24 @@ namespace SdDiagnostics {
             return true;
         };
 
+        if (cache.valid) {
+            Serial.printf("[sd-check] trying cached SD frequency %d kHz\n", cache.frequencyKhz);
+            if (tryMountFrequency(cache.frequencyKhz)) {
+                if (cacheMatchesMountedCard(cache)) {
+                    sMountedFrequencyKhz = cache.frequencyKhz;
+                    if (mountedFrequencyKhz != nullptr) {
+                        *mountedFrequencyKhz = cache.frequencyKhz;
+                    }
+                    Serial.printf("[sd-check] selected cached SD frequency %d kHz\n", cache.frequencyKhz);
+                    return true;
+                }
+
+                Serial.println("[sd-check] cached SD frequency belongs to a different card; rediscovering");
+                SD_MMC.end();
+                mounted = false;
+            }
+        }
+
         for (size_t i = 0; i < frequencyCount; ++i) {
             const int frequencyKhz = frequencyOrder[i];
             if (tryMountFrequency(frequencyKhz)) {
@@ -263,7 +304,7 @@ namespace SdDiagnostics {
                     *mountedFrequencyKhz = frequencyKhz;
                 }
                 Serial.printf("[sd-check] selected SD frequency %d kHz\n", frequencyKhz);
-                writeCachedFrequencyKhz(frequencyKhz);
+                writeFrequencyCache(frequencyKhz);
                 return true;
             }
         }
