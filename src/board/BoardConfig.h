@@ -2,6 +2,43 @@
 
 #include <Arduino.h>
 
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_LCD_349) && \
+    defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_241)
+#error "Select only one RSVP board target."
+#endif
+
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_LCD_349) && \
+    defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_18)
+#error "Select only one RSVP board target."
+#endif
+
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_LCD_349) && \
+    defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_216)
+#error "Select only one RSVP board target."
+#endif
+
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_241) && \
+    defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_18)
+#error "Select only one RSVP board target."
+#endif
+
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_241) && \
+    defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_216)
+#error "Select only one RSVP board target."
+#endif
+
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_18) && \
+    defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_216)
+#error "Select only one RSVP board target."
+#endif
+
+#if !defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_LCD_349) && \
+    !defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_18) && \
+    !defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_241) && \
+    !defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_216)
+#define RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_LCD_349 1
+#endif
+
 namespace BoardConfig {
 
 enum class UiOrientation : uint8_t {
@@ -11,44 +48,41 @@ enum class UiOrientation : uint8_t {
   PortraitFlipped,
 };
 
-constexpr int PIN_BOOT_BUTTON = 0;
-constexpr int PIN_PWR_BUTTON = 16;
-constexpr int PIN_BATTERY_ADC = 4;
+enum class DisplayDriverKind : uint8_t {
+  Axs15231b = 0,
+  Sh8601,
+  Rm690b0,
+  Co5300,
+};
 
-constexpr int PIN_LCD_CS = 9;
-constexpr int PIN_LCD_SCLK = 10;
-constexpr int PIN_LCD_DATA0 = 11;
-constexpr int PIN_LCD_DATA1 = 12;
-constexpr int PIN_LCD_DATA2 = 13;
-constexpr int PIN_LCD_DATA3 = 14;
-constexpr int PIN_LCD_RST = 21;
-constexpr int PIN_LCD_BACKLIGHT = 8;
+enum class TouchControllerKind : uint8_t {
+  Axs15231b = 0,
+  Ft6336,
+  Cst92xx,
+};
 
-constexpr int PANEL_NATIVE_WIDTH = 172;
-constexpr int PANEL_NATIVE_HEIGHT = 640;
-constexpr int DISPLAY_WIDTH = 640;
-constexpr int DISPLAY_HEIGHT = 172;
-constexpr bool UI_ROTATED_180 = true;  // Keep BOOT/PWR at the top edge in landscape.
+enum class StorageBusKind : uint8_t {
+  SdMmc1Bit = 0,
+  SdSpi,
+};
 
-constexpr int PIN_SD_CLK = 41;
-constexpr int PIN_SD_CMD = 39;
-constexpr int PIN_SD_D0 = 40;
-constexpr int PIN_I2C_SDA = 47;
-constexpr int PIN_I2C_SCL = 48;
-constexpr int PIN_TOUCH_SDA = 17;
-constexpr int PIN_TOUCH_SCL = 18;
+enum class PowerManagerKind : uint8_t {
+  Tca9554 = 0,
+  Axp2101,
+  DirectGpioBatteryHold,
+};
 
-constexpr int TCA9554_ADDRESS = 0x20;
-constexpr uint8_t TCA9554_PIN_BATTERY_ADC_ENABLE = 1;
-constexpr uint8_t TCA9554_PIN_SYS_EN = 6;
-constexpr uint8_t TCA9554_PIN_AUDIO_ENABLE = 7;
-
-constexpr int PIN_AUDIO_MCLK = 7;
-constexpr int PIN_AUDIO_BCLK = 15;
-constexpr int PIN_AUDIO_WS = 46;
-constexpr int PIN_AUDIO_DIN = 6;
-constexpr int PIN_AUDIO_DOUT = 45;
-constexpr uint8_t ES8311_ADDRESS = 0x18;
+#if defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_216)
+#include "board/profiles/WaveshareEsp32S3TouchAmoled216Profile.h"
+#elif defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_18)
+#include "board/profiles/WaveshareEsp32S3TouchAmoled18Profile.h"
+#elif defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_AMOLED_241)
+#include "board/profiles/WaveshareEsp32S3TouchAmoled241Profile.h"
+#elif defined(RSVP_BOARD_WAVESHARE_ESP32S3_TOUCH_LCD_349)
+#include "board/profiles/WaveshareEsp32S3TouchLcd349Profile.h"
+#else
+#error "Unsupported RSVP board target."
+#endif
 
 struct BatteryStatus {
   bool present = false;
@@ -56,10 +90,26 @@ struct BatteryStatus {
   uint8_t percent = 0;
 };
 
+struct PowerDiagnosticSnapshot {
+  bool available = false;
+  bool externalPowerPresent = false;
+  uint8_t status1 = 0;
+  uint8_t status2 = 0;
+  uint8_t powerKeyIrqStatus = 0;
+};
+
 void begin();
 void lightSleepUntilBootButton();
 void holdBacklightOffForDeepSleep();
+void resetWakePeripherals();
+void resetTouchController();
 bool readBatteryStatus(BatteryStatus &status);
+PowerDiagnosticSnapshot powerDiagnosticSnapshot();
+bool externalPowerPresent();
 bool releaseBatteryPowerHold();
+bool readVirtualBootButtonHeld();
+bool readVirtualPowerButtonHeld();
+bool consumeVirtualPowerButtonShortPressEvent();
+bool consumeVirtualPowerButtonLongPressEvent();
 
 }  // namespace BoardConfig
