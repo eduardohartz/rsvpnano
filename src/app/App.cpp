@@ -12,6 +12,7 @@
 
 #include "app/MenuRepeat.h"
 #include "board/BoardConfig.h"
+#include "settings/PreferenceKeys.h"
 
 #ifndef RSVP_USB_TRANSFER_ENABLED
 #define RSVP_USB_TRANSFER_ENABLED 0
@@ -276,55 +277,9 @@ constexpr size_t kWifiNetworksBackIndex = 0;
 constexpr size_t kWifiNetworksFirstItemIndex = 1;
 constexpr size_t kFocusTimerGenreBackIndex = 0;
 constexpr size_t kFocusTimerGenreFirstIndex = 1;
-constexpr const char *kPrefsNamespace = "rsvp";
-constexpr const char *kPrefBookPath = "book";
-constexpr const char *kPrefLegacyWordIndex = "word";
-constexpr const char *kPrefWpm = "wpm";
-constexpr const char *kPrefBrightness = "bright";
-constexpr const char *kPrefDarkMode = "dark";
-constexpr const char *kPrefNightMode = "night";
-constexpr const char *kPrefYellowMode = "yellow_md";
-constexpr const char *kPrefUiLanguage = "ui_lang";
-constexpr const char *kPrefReaderMode = "read_mode";
-constexpr const char *kPrefHandedness = "handed";
-constexpr const char *kPrefPhantomWords = "phantom_on";
-constexpr const char *kPrefFooterMetricMode = "prog_md";
-constexpr const char *kPrefBatteryLabelMode = "bat_md";
-constexpr const char *kPrefScreensaverMode = "scrn_sv";
-constexpr const char *kPrefReaderBatteryVisible = "read_bat";
-constexpr const char *kPrefReaderChapterVisible = "read_ch";
-constexpr const char *kPrefReaderProgressVisible = "read_pct";
-constexpr const char *kPrefChapterLabelRsvp = "ch_lbl_rsvp";
-constexpr const char *kPrefChapterLabelScroll = "ch_lbl_scroll";
-constexpr const char *kPrefReaderFontSize = "font_size";
-constexpr const char *kPrefReaderTypeface = "typeface";
-constexpr const char *kPrefTypographyFocusHighlight = "type_hlt";
-constexpr const char *kPrefLegacyPacingLong = "pace_len";
-constexpr const char *kPrefLegacyPacingComplex = "pace_cpx";
-constexpr const char *kPrefLegacyPacingPunctuation = "pace_pnc";
-constexpr const char *kPrefPacingLongMs = "pace_lms";
-constexpr const char *kPrefPacingComplexMs = "pace_cms";
-constexpr const char *kPrefPacingPunctuationMs = "pace_pms";
-constexpr const char *kPrefPauseMode = "pause_md";
-constexpr const char *kPrefAccurateTime = "time_est_a";
-constexpr const char *kPrefTypographyTracking = "type_trk";
-constexpr const char *kPrefTypographyAnchor = "type_anc";
-constexpr const char *kPrefTypographyGuideWidth = "type_wid";
-constexpr const char *kPrefTypographyGuideGap = "type_gap";
-constexpr const char *kPrefRecentSeq = "seq";
-constexpr const char *kPrefWifiSsid = "wifi_ssid";
-constexpr const char *kPrefWifiPass = "wifi_pass";
-constexpr const char *kPrefOtaAuto = "ota_auto";
-constexpr const char *kPrefOtaOwner = "ota_owner";
-constexpr const char *kPrefMenuRepeatMs = "menu_rpt";
-constexpr const char *kPrefStandbyTimer = "stby_tmr";
-constexpr const char *kPrefTimerDurationByGenre[FocusTimer::kGenreCount] = {
-    "tmr_dur_0",
-    "tmr_dur_1",
-    "tmr_dur_2",
-    "tmr_dur_3",
-    "tmr_dur_4",
-};
+// Preference keys are defined once in settings/PreferenceKeys.h and shared with
+// the web companion; pull them into scope so existing call sites are unchanged.
+using namespace settings;
 constexpr size_t kReaderFontSizeCount = 3;
 constexpr size_t kPhantomBeforeCharTargets[] = {64, 96, 144};
 constexpr size_t kPhantomAfterCharTargets[] = {96, 144, 208};
@@ -488,113 +443,6 @@ const char *keyboardRowText(uint8_t modeValue, size_t rowIndex) {
 String storedOrFallbackLabel(const String &value, const String &fallback) {
   return value.isEmpty() ? fallback : value;
 }
-
-size_t packedLifeWordCount(size_t cellCount) { return (cellCount + 31U) / 32U; }
-
-bool packedLifeCellAlive(const std::vector<uint32_t> &cells, size_t index) {
-  const size_t word = index / 32U;
-  if (word >= cells.size()) {
-    return false;
-  }
-  return (cells[word] & (1UL << (index % 32U))) != 0;
-}
-
-void setPackedLifeCell(std::vector<uint32_t> &cells, size_t index, bool alive) {
-  const size_t word = index / 32U;
-  if (word >= cells.size()) {
-    return;
-  }
-  const uint32_t mask = 1UL << (index % 32U);
-  if (alive) {
-    cells[word] |= mask;
-  } else {
-    cells[word] &= ~mask;
-  }
-}
-
-uint32_t advanceStandbyRng(uint32_t &rng) {
-  rng = (rng * 1664525UL) + 1013904223UL;
-  return rng;
-}
-
-struct LifePoint {
-  int8_t x;
-  int8_t y;
-};
-
-void setPackedLifeCellAt(std::vector<uint32_t> &cells, uint16_t columns, uint16_t rows, int x,
-                         int y, bool alive) {
-  if (x < 0 || y < 0 || x >= static_cast<int>(columns) || y >= static_cast<int>(rows)) {
-    return;
-  }
-  setPackedLifeCell(cells, static_cast<size_t>(y) * columns + static_cast<size_t>(x), alive);
-}
-
-void clearPackedLifeRect(std::vector<uint32_t> &cells, uint16_t columns, uint16_t rows, int x,
-                         int y, int width, int height) {
-  const int xEnd = std::min(static_cast<int>(columns), x + width);
-  const int yEnd = std::min(static_cast<int>(rows), y + height);
-  for (int cy = std::max(0, y); cy < yEnd; ++cy) {
-    for (int cx = std::max(0, x); cx < xEnd; ++cx) {
-      setPackedLifeCellAt(cells, columns, rows, cx, cy, false);
-    }
-  }
-}
-
-void stampPackedLifePattern(std::vector<uint32_t> &cells, uint16_t columns, uint16_t rows,
-                            const LifePoint *points, size_t pointCount, int originX,
-                            int originY) {
-  for (size_t i = 0; i < pointCount; ++i) {
-    setPackedLifeCellAt(cells, columns, rows, originX + points[i].x, originY + points[i].y, true);
-  }
-}
-
-void clearAndStampPackedLifePattern(std::vector<uint32_t> &cells, uint16_t columns, uint16_t rows,
-                                    const LifePoint *points, size_t pointCount, int originX,
-                                    int originY, int width, int height) {
-  if (originX < 0 || originY < 0 || originX + width > static_cast<int>(columns) ||
-      originY + height > static_cast<int>(rows)) {
-    return;
-  }
-  constexpr int kPatternMargin = 5;
-  clearPackedLifeRect(cells, columns, rows, originX - kPatternMargin, originY - kPatternMargin,
-                      width + kPatternMargin * 2, height + kPatternMargin * 2);
-  stampPackedLifePattern(cells, columns, rows, points, pointCount, originX, originY);
-}
-
-constexpr LifePoint kLifeGlider[] = {
-    {1, 0},
-    {2, 1},
-    {0, 2},
-    {1, 2},
-    {2, 2},
-};
-
-constexpr LifePoint kLifeLightweightSpaceship[] = {
-    {1, 0}, {4, 0}, {0, 1}, {0, 2}, {4, 2}, {0, 3}, {1, 3}, {2, 3}, {3, 3},
-};
-
-constexpr LifePoint kLifePentadecathlon[] = {
-    {2, 0}, {2, 1}, {1, 2}, {3, 2}, {2, 3}, {2, 4},
-    {2, 5}, {2, 6}, {1, 7}, {3, 7}, {2, 8}, {2, 9},
-};
-
-constexpr LifePoint kLifePulsar[] = {
-    {2, 0},  {3, 0},  {4, 0},  {8, 0},  {9, 0},  {10, 0}, {0, 2},  {5, 2},
-    {7, 2},  {12, 2}, {0, 3},  {5, 3},  {7, 3},  {12, 3}, {0, 4},  {5, 4},
-    {7, 4},  {12, 4}, {2, 5},  {3, 5},  {4, 5},  {8, 5},  {9, 5},  {10, 5},
-    {2, 7},  {3, 7},  {4, 7},  {8, 7},  {9, 7},  {10, 7}, {0, 8},  {5, 8},
-    {7, 8},  {12, 8}, {0, 9},  {5, 9},  {7, 9},  {12, 9}, {0, 10}, {5, 10},
-    {7, 10}, {12, 10}, {2, 12}, {3, 12}, {4, 12}, {8, 12}, {9, 12}, {10, 12},
-};
-
-constexpr LifePoint kLifeGosperGliderGun[] = {
-    {24, 0}, {22, 1}, {24, 1}, {12, 2}, {13, 2}, {20, 2}, {21, 2}, {34, 2}, {35, 2},
-    {11, 3}, {15, 3}, {20, 3}, {21, 3}, {34, 3}, {35, 3}, {0, 4},  {1, 4},
-    {10, 4}, {16, 4}, {20, 4}, {21, 4}, {0, 5},  {1, 5},  {10, 5}, {14, 5},
-    {16, 5}, {17, 5}, {22, 5}, {24, 5}, {10, 6}, {16, 6}, {24, 6}, {11, 7},
-    {15, 7}, {12, 8}, {13, 8},
-};
 
 void copyOtaLabel(char *destination, size_t destinationSize, const String &source) {
   if (destination == nullptr || destinationSize == 0) {
@@ -5639,372 +5487,50 @@ void App::exitStandby(uint32_t nowMs) {
   setState(nextState, nowMs);
 }
 
+uint32_t App::standbyRngSeed(uint32_t nowMs) const {
+  return nowMs ^ micros() ^ (static_cast<uint32_t>(reader_.currentIndex() + 1) * 2654435761UL) ^
+         (static_cast<uint32_t>(batteryDisplayedPercent_) << 24);
+}
+
 void App::seedStandbyScreensaver(uint32_t nowMs) {
   if (screensaverMode_ != ScreensaverMode::ScreenOff && standbyScreenOffActive_) {
     display_.wakeFromSleep();
     standbyScreenOffActive_ = false;
   }
 
+  if (screensaverMode_ == ScreensaverMode::ScreenOff) {
+    screensaver_.reset();
+    seedStandbyScreenOff(nowMs);
+    return;
+  }
+
+  standby::Kind kind = standby::Kind::Life;
   switch (screensaverMode_) {
     case ScreensaverMode::Maze:
-      seedStandbyMaze(nowMs);
-      return;
+      kind = standby::Kind::Maze;
+      break;
     case ScreensaverMode::Voronoi:
-      seedStandbyVoronoi(nowMs);
-      return;
-    case ScreensaverMode::ScreenOff:
-      seedStandbyScreenOff(nowMs);
-      return;
+      kind = standby::Kind::Voronoi;
+      break;
     case ScreensaverMode::Life:
     default:
-      seedStandbyLife(nowMs);
-      return;
+      kind = standby::Kind::Life;
+      break;
   }
+  screensaver_ = standby::makeScreensaver(kind, kStandbyLifeColumns, kStandbyLifeRows);
+  screensaver_->seed(standbyRngSeed(nowMs));
 }
 
 void App::stepStandbyScreensaver(uint32_t nowMs) {
   (void)nowMs;
-  switch (screensaverMode_) {
-    case ScreensaverMode::Maze:
-      stepStandbyMaze();
-      return;
-    case ScreensaverMode::Voronoi:
-      stepStandbyVoronoi();
-      return;
-    case ScreensaverMode::ScreenOff:
-      return;
-    case ScreensaverMode::Life:
-    default:
-      stepStandbyLife();
-      return;
+  if (screensaver_) {
+    screensaver_->step();
   }
-}
-
-void App::seedStandbyLife(uint32_t nowMs) {
-  const size_t cellCount =
-      static_cast<size_t>(kStandbyLifeColumns) * static_cast<size_t>(kStandbyLifeRows);
-  standbyLifeCells_.assign(packedLifeWordCount(cellCount), 0);
-  standbyLifeNextCells_.assign(packedLifeWordCount(cellCount), 0);
-  standbyScreensaverDimCells_.clear();
-  standbyMazeVisited_.clear();
-  standbyMazeStack_.clear();
-  standbyVoronoiX_.clear();
-  standbyVoronoiY_.clear();
-  standbyVoronoiDx_.clear();
-  standbyVoronoiDy_.clear();
-  standbyLifeGeneration_ = 0;
-
-  standbyScreensaverRng_ =
-      nowMs ^ micros() ^ (static_cast<uint32_t>(reader_.currentIndex() + 1) * 2654435761UL) ^
-      (static_cast<uint32_t>(batteryDisplayedPercent_) << 24);
-  for (size_t i = 0; i < cellCount; ++i) {
-    setPackedLifeCell(standbyLifeCells_, i, (advanceStandbyRng(standbyScreensaverRng_) >> 24) < 12);
-  }
-
-  clearAndStampPackedLifePattern(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                 kLifeGosperGliderGun,
-                                 sizeof(kLifeGosperGliderGun) / sizeof(kLifeGosperGliderGun[0]),
-                                 18, 18, 36, 9);
-  clearAndStampPackedLifePattern(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                 kLifeGosperGliderGun,
-                                 sizeof(kLifeGosperGliderGun) / sizeof(kLifeGosperGliderGun[0]),
-                                 static_cast<int>(kStandbyLifeColumns) - 62,
-                                 static_cast<int>(kStandbyLifeRows) - 34, 36, 9);
-  clearAndStampPackedLifePattern(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                 kLifePulsar, sizeof(kLifePulsar) / sizeof(kLifePulsar[0]),
-                                 static_cast<int>(kStandbyLifeColumns / 2) - 7,
-                                 static_cast<int>(kStandbyLifeRows / 2) - 7, 13, 13);
-  clearAndStampPackedLifePattern(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                 kLifePentadecathlon,
-                                 sizeof(kLifePentadecathlon) / sizeof(kLifePentadecathlon[0]),
-                                 static_cast<int>(kStandbyLifeColumns / 3),
-                                 static_cast<int>(kStandbyLifeRows) - 42, 5, 10);
-  clearAndStampPackedLifePattern(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                 kLifeLightweightSpaceship,
-                                 sizeof(kLifeLightweightSpaceship) /
-                                     sizeof(kLifeLightweightSpaceship[0]),
-                                 static_cast<int>((kStandbyLifeColumns * 2) / 3),
-                                 static_cast<int>(kStandbyLifeRows / 3), 5, 4);
-
-  for (uint8_t i = 0; i < 10; ++i) {
-    const int x =
-        static_cast<int>((advanceStandbyRng(standbyScreensaverRng_) >> 8) %
-                         std::max<uint16_t>(1, kStandbyLifeColumns - 6));
-    const int y =
-        static_cast<int>((advanceStandbyRng(standbyScreensaverRng_) >> 8) %
-                         std::max<uint16_t>(1, kStandbyLifeRows - 6));
-    clearAndStampPackedLifePattern(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                   kLifeGlider, sizeof(kLifeGlider) / sizeof(kLifeGlider[0]), x,
-                                   y, 3, 3);
-  }
-}
-
-void App::stepStandbyLife() {
-  const size_t cellCount =
-      static_cast<size_t>(kStandbyLifeColumns) * static_cast<size_t>(kStandbyLifeRows);
-  const size_t wordCount = packedLifeWordCount(cellCount);
-  if (standbyLifeCells_.size() != wordCount || standbyLifeNextCells_.size() != wordCount) {
-    seedStandbyLife(millis());
-    return;
-  }
-
-  std::fill(standbyLifeNextCells_.begin(), standbyLifeNextCells_.end(), 0);
-  size_t aliveCount = 0;
-  for (uint16_t y = 0; y < kStandbyLifeRows; ++y) {
-    for (uint16_t x = 0; x < kStandbyLifeColumns; ++x) {
-      uint8_t neighbours = 0;
-      for (int8_t dy = -1; dy <= 1; ++dy) {
-        for (int8_t dx = -1; dx <= 1; ++dx) {
-          if (dx == 0 && dy == 0) {
-            continue;
-          }
-          const uint16_t nx =
-              static_cast<uint16_t>((static_cast<int>(x) + dx + kStandbyLifeColumns) %
-                                    kStandbyLifeColumns);
-          const uint16_t ny =
-              static_cast<uint16_t>((static_cast<int>(y) + dy + kStandbyLifeRows) %
-                                    kStandbyLifeRows);
-          neighbours += packedLifeCellAlive(
-              standbyLifeCells_, static_cast<size_t>(ny) * kStandbyLifeColumns + nx)
-                            ? 1
-                            : 0;
-        }
-      }
-
-      const size_t index = static_cast<size_t>(y) * kStandbyLifeColumns + x;
-      const bool alive = packedLifeCellAlive(standbyLifeCells_, index);
-      const bool nextAlive = alive ? (neighbours == 2 || neighbours == 3) : (neighbours == 3);
-      setPackedLifeCell(standbyLifeNextCells_, index, nextAlive);
-      if (nextAlive) {
-        ++aliveCount;
-      }
-    }
-  }
-
-  standbyLifeCells_.swap(standbyLifeNextCells_);
-  ++standbyLifeGeneration_;
-  if (aliveCount == 0 || aliveCount > (cellCount * 3) / 4) {
-    seedStandbyLife(millis());
-  }
-}
-
-void App::seedStandbyMaze(uint32_t nowMs) {
-  const size_t cellCount =
-      static_cast<size_t>(kStandbyLifeColumns) * static_cast<size_t>(kStandbyLifeRows);
-  const uint16_t mazeColumns = std::max<uint16_t>(1, (kStandbyLifeColumns - 1) / 2);
-  const uint16_t mazeRows = std::max<uint16_t>(1, (kStandbyLifeRows - 1) / 2);
-  standbyLifeCells_.assign(packedLifeWordCount(cellCount), 0);
-  standbyLifeNextCells_.assign(packedLifeWordCount(cellCount), 0);
-  standbyScreensaverDimCells_.clear();
-  standbyVoronoiX_.clear();
-  standbyVoronoiY_.clear();
-  standbyVoronoiDx_.clear();
-  standbyVoronoiDy_.clear();
-  standbyMazeVisited_.assign(static_cast<size_t>(mazeColumns) * mazeRows, 0);
-  standbyMazeStack_.clear();
-  standbyLifeGeneration_ = 0;
-  standbyScreensaverRng_ =
-      nowMs ^ micros() ^ (static_cast<uint32_t>(reader_.currentIndex() + 1) * 2246822519UL);
-
-  const uint16_t startX = static_cast<uint16_t>((advanceStandbyRng(standbyScreensaverRng_) >> 8) %
-                                               mazeColumns);
-  const uint16_t startY = static_cast<uint16_t>((advanceStandbyRng(standbyScreensaverRng_) >> 8) %
-                                               mazeRows);
-  standbyMazeVisited_[static_cast<size_t>(startY) * mazeColumns + startX] = 1;
-  standbyMazeStack_.push_back(static_cast<uint16_t>(startY * mazeColumns + startX));
-  setPackedLifeCellAt(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                      static_cast<int>(startX) * 2 + 1, static_cast<int>(startY) * 2 + 1, true);
-}
-
-void App::stepStandbyMaze() {
-  const uint16_t mazeColumns = std::max<uint16_t>(1, (kStandbyLifeColumns - 1) / 2);
-  const uint16_t mazeRows = std::max<uint16_t>(1, (kStandbyLifeRows - 1) / 2);
-  const size_t mazeCellCount = static_cast<size_t>(mazeColumns) * mazeRows;
-  if (standbyMazeVisited_.size() != mazeCellCount || standbyMazeStack_.empty()) {
-    if (standbyMazeStack_.empty() && standbyLifeGeneration_ < 600) {
-      ++standbyLifeGeneration_;
-      return;
-    }
-    seedStandbyMaze(millis());
-    return;
-  }
-
-  constexpr uint8_t kMazeStepsPerFrame = 32;
-  for (uint8_t step = 0; step < kMazeStepsPerFrame && !standbyMazeStack_.empty(); ++step) {
-    const uint16_t current = standbyMazeStack_.back();
-    const uint16_t cx = current % mazeColumns;
-    const uint16_t cy = current / mazeColumns;
-    uint16_t candidates[4];
-    uint8_t candidateCount = 0;
-
-    auto addCandidate = [&](int nx, int ny) {
-      if (nx < 0 || ny < 0 || nx >= static_cast<int>(mazeColumns) ||
-          ny >= static_cast<int>(mazeRows)) {
-        return;
-      }
-      const uint16_t encoded = static_cast<uint16_t>(ny * mazeColumns + nx);
-      if (standbyMazeVisited_[encoded] == 0) {
-        candidates[candidateCount++] = encoded;
-      }
-    };
-
-    addCandidate(static_cast<int>(cx) + 1, cy);
-    addCandidate(static_cast<int>(cx) - 1, cy);
-    addCandidate(cx, static_cast<int>(cy) + 1);
-    addCandidate(cx, static_cast<int>(cy) - 1);
-
-    if (candidateCount == 0) {
-      standbyMazeStack_.pop_back();
-      continue;
-    }
-
-    const uint16_t next = candidates[(advanceStandbyRng(standbyScreensaverRng_) >> 16) %
-                                     candidateCount];
-    const uint16_t nx = next % mazeColumns;
-    const uint16_t ny = next / mazeColumns;
-    standbyMazeVisited_[next] = 1;
-    standbyMazeStack_.push_back(next);
-
-    const int displayCx = static_cast<int>(cx) * 2 + 1;
-    const int displayCy = static_cast<int>(cy) * 2 + 1;
-    const int displayNx = static_cast<int>(nx) * 2 + 1;
-    const int displayNy = static_cast<int>(ny) * 2 + 1;
-    setPackedLifeCellAt(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows, displayNx,
-                        displayNy, true);
-    setPackedLifeCellAt(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                        (displayCx + displayNx) / 2, (displayCy + displayNy) / 2, true);
-  }
-
-  if (standbyMazeStack_.empty()) {
-    standbyLifeGeneration_ = 0;
-  } else {
-    ++standbyLifeGeneration_;
-  }
-}
-
-void App::seedStandbyVoronoi(uint32_t nowMs) {
-  const size_t cellCount =
-      static_cast<size_t>(kStandbyLifeColumns) * static_cast<size_t>(kStandbyLifeRows);
-  const size_t wordCount = packedLifeWordCount(cellCount);
-  standbyLifeCells_.assign(wordCount, 0);
-  standbyLifeNextCells_.assign(wordCount, 0);
-  standbyScreensaverDimCells_.assign(wordCount, 0);
-  standbyMazeVisited_.clear();
-  standbyMazeStack_.clear();
-  standbyLifeGeneration_ = 0;
-  standbyScreensaverRng_ =
-      nowMs ^ micros() ^ (static_cast<uint32_t>(reader_.currentIndex() + 1) * 3266489917UL) ^
-      0x51a7f00dUL;
-
-  constexpr size_t kVoronoiSiteCount = 15;
-  standbyVoronoiX_.assign(kVoronoiSiteCount, 0);
-  standbyVoronoiY_.assign(kVoronoiSiteCount, 0);
-  standbyVoronoiDx_.assign(kVoronoiSiteCount, 0);
-  standbyVoronoiDy_.assign(kVoronoiSiteCount, 0);
-  for (size_t i = 0; i < kVoronoiSiteCount; ++i) {
-    standbyVoronoiX_[i] = static_cast<int16_t>(
-        ((advanceStandbyRng(standbyScreensaverRng_) >> 8) % kStandbyLifeColumns) * 16);
-    standbyVoronoiY_[i] = static_cast<int16_t>(
-        ((advanceStandbyRng(standbyScreensaverRng_) >> 8) % kStandbyLifeRows) * 16);
-
-    const int16_t dx =
-        static_cast<int16_t>(4 + ((advanceStandbyRng(standbyScreensaverRng_) >> 24) % 7));
-    const int16_t dy =
-        static_cast<int16_t>(3 + ((advanceStandbyRng(standbyScreensaverRng_) >> 24) % 6));
-    standbyVoronoiDx_[i] =
-        (advanceStandbyRng(standbyScreensaverRng_) & 1U) != 0 ? dx : static_cast<int16_t>(-dx);
-    standbyVoronoiDy_[i] =
-        (advanceStandbyRng(standbyScreensaverRng_) & 1U) != 0 ? dy : static_cast<int16_t>(-dy);
-  }
-  renderStandbyVoronoi();
-}
-
-void App::renderStandbyVoronoi() {
-  const size_t cellCount =
-      static_cast<size_t>(kStandbyLifeColumns) * static_cast<size_t>(kStandbyLifeRows);
-  const size_t wordCount = packedLifeWordCount(cellCount);
-  standbyLifeCells_.assign(wordCount, 0);
-  standbyScreensaverDimCells_.assign(wordCount, 0);
-  if (standbyVoronoiX_.empty()) {
-    return;
-  }
-
-  for (uint16_t y = 0; y < kStandbyLifeRows; ++y) {
-    const int32_t cellY = static_cast<int32_t>(y) * 16 + 8;
-    for (uint16_t x = 0; x < kStandbyLifeColumns; ++x) {
-      const int32_t cellX = static_cast<int32_t>(x) * 16 + 8;
-      int32_t nearest = INT32_MAX;
-      int32_t secondNearest = INT32_MAX;
-      for (size_t i = 0; i < standbyVoronoiX_.size(); ++i) {
-        const int32_t dx = cellX - standbyVoronoiX_[i];
-        const int32_t dy = cellY - standbyVoronoiY_[i];
-        const int32_t distance = dx * dx + dy * dy;
-        if (distance < nearest) {
-          secondNearest = nearest;
-          nearest = distance;
-        } else if (distance < secondNearest) {
-          secondNearest = distance;
-        }
-      }
-
-      const size_t index = static_cast<size_t>(y) * kStandbyLifeColumns + x;
-      const int32_t gap = secondNearest - nearest;
-      if (nearest < 1200 || gap < 190) {
-        setPackedLifeCell(standbyLifeCells_, index, true);
-      } else if (gap < 580 + nearest / 180) {
-        setPackedLifeCell(standbyScreensaverDimCells_, index, true);
-      }
-    }
-  }
-}
-
-void App::stepStandbyVoronoi() {
-  constexpr size_t kVoronoiSiteCount = 15;
-  if (standbyVoronoiX_.size() != kVoronoiSiteCount ||
-      standbyVoronoiY_.size() != kVoronoiSiteCount ||
-      standbyVoronoiDx_.size() != kVoronoiSiteCount ||
-      standbyVoronoiDy_.size() != kVoronoiSiteCount) {
-    seedStandbyVoronoi(millis());
-    return;
-  }
-
-  const int16_t maxX = static_cast<int16_t>((kStandbyLifeColumns - 1) * 16);
-  const int16_t maxY = static_cast<int16_t>((kStandbyLifeRows - 1) * 16);
-  for (size_t i = 0; i < standbyVoronoiX_.size(); ++i) {
-    int16_t nextX = static_cast<int16_t>(standbyVoronoiX_[i] + standbyVoronoiDx_[i]);
-    int16_t nextY = static_cast<int16_t>(standbyVoronoiY_[i] + standbyVoronoiDy_[i]);
-    if (nextX < 0 || nextX > maxX) {
-      standbyVoronoiDx_[i] = static_cast<int16_t>(-standbyVoronoiDx_[i]);
-      nextX = std::max<int16_t>(0, std::min<int16_t>(maxX, nextX));
-    }
-    if (nextY < 0 || nextY > maxY) {
-      standbyVoronoiDy_[i] = static_cast<int16_t>(-standbyVoronoiDy_[i]);
-      nextY = std::max<int16_t>(0, std::min<int16_t>(maxY, nextY));
-    }
-    standbyVoronoiX_[i] = nextX;
-    standbyVoronoiY_[i] = nextY;
-  }
-
-  ++standbyLifeGeneration_;
-  if (standbyLifeGeneration_ > 2400) {
-    seedStandbyVoronoi(millis());
-    return;
-  }
-  renderStandbyVoronoi();
 }
 
 void App::seedStandbyScreenOff(uint32_t nowMs) {
   (void)nowMs;
-  standbyLifeCells_.clear();
-  standbyLifeNextCells_.clear();
-  standbyScreensaverDimCells_.clear();
-  standbyMazeVisited_.clear();
-  standbyMazeStack_.clear();
-  standbyVoronoiX_.clear();
-  standbyVoronoiY_.clear();
-  standbyVoronoiDx_.clear();
-  standbyVoronoiDy_.clear();
-  standbyLifeGeneration_ = 0;
+  screensaver_.reset();
   standbyScreenOffActive_ = true;
   display_.prepareForSleep();
 }
@@ -6028,15 +5554,16 @@ void App::updateStandbyScreensaver(uint32_t nowMs, bool force) {
 
   if (!force) {
     stepStandbyScreensaver(nowMs);
-  } else if (standbyLifeCells_.empty()) {
+  } else if (!screensaver_) {
     seedStandbyScreensaver(nowMs);
   }
 
   lastStandbyFrameMs_ = nowMs;
-  display_.renderLifeScreensaver(standbyLifeCells_, kStandbyLifeColumns, kStandbyLifeRows,
-                                 standbyLifeGeneration_,
-                                 standbyScreensaverDimCells_.empty() ? nullptr
-                                                                      : &standbyScreensaverDimCells_);
+  if (screensaver_) {
+    const standby::Frame frame = screensaver_->frame();
+    display_.renderLifeScreensaver(*frame.cells, kStandbyLifeColumns, kStandbyLifeRows,
+                                   frame.generation, frame.dimCells);
+  }
 }
 
 void App::enterPowerOff(uint32_t nowMs) {
