@@ -1,15 +1,25 @@
+#pragma once
+
+#include "board/BoardTypes.h"
+
+namespace Board::Config {
+
+using UiOrientation = Board::UiOrientation;
+using StorageBusKind = Board::StorageBusKind;
+using PowerManagerKind = Board::PowerManagerKind;
+using BatteryStatus = Board::BatteryStatus;
+using PowerDiagnosticSnapshot = Board::PowerDiagnosticSnapshot;
 constexpr const char *BOARD_ID = "waveshare_esp32s3_touch_amoled_2_16";
 constexpr const char *BOARD_LABEL = "Waveshare ESP32-S3-Touch-AMOLED-2.16";
 constexpr const char *OTA_ASSET_NAME = "rsvp-nano-esp32-s3-touch-amoled-2.16-ota.bin";
-constexpr DisplayDriverKind DISPLAY_DRIVER = DisplayDriverKind::Co5300;
-constexpr TouchControllerKind TOUCH_CONTROLLER = TouchControllerKind::Cst92xx;
 constexpr StorageBusKind STORAGE_BUS = StorageBusKind::SdMmc1Bit;
 constexpr PowerManagerKind POWER_MANAGER = PowerManagerKind::Axp2101;
 constexpr bool HAS_LCD_BACKLIGHT = false;
-constexpr bool HAS_AUDIO_OUTPUT = false;
+constexpr bool HAS_AUDIO_OUTPUT = true;
 constexpr bool TOUCH_USES_WIRE1 = false;
 constexpr bool HAS_IMU = true;
 constexpr bool IMU_USES_WIRE1 = false;
+constexpr bool IMU_RELEASE_BUS_BEFORE_READ = true;
 constexpr uint8_t IMU_I2C_ADDRESS = 0x6B;
 constexpr bool SWAP_APP_BOOT_AND_POWER_BUTTONS = false;
 constexpr bool APP_POWER_BUTTON_USES_PMU_EVENTS = false;
@@ -61,7 +71,16 @@ constexpr bool SOFTWARE_POWEROFF_USES_SOFT_LOOP = true;
 constexpr bool SOFT_OFF_WAKE_USES_POWER_BUTTON = true;
 constexpr bool SOFT_OFF_WAKE_USES_BOOT_BUTTON = true;
 constexpr uint32_t SOFT_OFF_WAKE_CONFIRM_MS = 90;
+constexpr uint32_t SYSTEM_I2C_CLOCK_HZ = 400000;
+constexpr uint32_t SYSTEM_I2C_TIMEOUT_MS = 10;
+constexpr uint32_t TOUCH_I2C_CLOCK_HZ = SYSTEM_I2C_CLOCK_HZ;
+constexpr uint32_t TOUCH_I2C_TIMEOUT_MS = SYSTEM_I2C_TIMEOUT_MS;
 constexpr bool PMU_REQUIRES_POWER_KEY_CONFIG = false;
+constexpr bool AXP2101_RELEASE_BUS_BEFORE_READ = false;
+constexpr bool AXP2101_ENABLE_POWER_KEY_IRQS = true;
+constexpr bool TCA9554_HAS_DISPLAY_SEQUENCE = false;
+constexpr bool TCA9554_HAS_POWER_BUTTON = false;
+constexpr bool TCA9554_RELEASE_BUS_BEFORE_READ = false;
 constexpr uint8_t PMU_POWER_KEY_ON_TIME_VALUE = 0x00;
 constexpr uint8_t PMU_POWER_KEY_OFF_TIME_VALUE = 0x00;
 constexpr uint32_t PMU_BOOT_BUTTON_IGNORE_MS = 1200;
@@ -85,6 +104,7 @@ constexpr int PIN_TOUCH_IRQ = 11;
 constexpr int PIN_TOUCH_RST = 40;
 constexpr uint8_t TOUCH_I2C_ADDRESS = 0x5A;
 constexpr bool TOUCH_REQUIRES_MONITOR_MODE = false;
+constexpr bool TOUCH_RELEASE_BUS_BEFORE_READ = false;
 constexpr uint8_t TOUCH_MONITOR_MODE_REGISTER = 0x00;
 constexpr uint8_t TOUCH_MONITOR_MODE_VALUE = 0x00;
 constexpr uint32_t TOUCH_POLL_INTERVAL_MS = 20;
@@ -93,6 +113,12 @@ constexpr uint32_t TOUCH_RECOVERY_RETRY_MS = 1000;
 constexpr uint32_t TOUCH_RECOVERY_EVENT_IGNORE_MS = 0;
 
 constexpr int TCA9554_ADDRESS = -1;
+constexpr uint8_t TCA9554_PIN_PWR_BUTTON = 0;
+constexpr uint8_t TCA9554_PIN_PMU_IRQ = 0;
+constexpr uint8_t TCA9554_PIN_SD_ENABLE = 0;
+constexpr uint8_t TCA9554_PIN_TOUCH_RESET = 0;
+constexpr uint8_t TCA9554_PIN_LCD_RESET = 0;
+constexpr uint8_t TCA9554_PIN_DISPLAY_ENABLE = 0;
 constexpr uint8_t TCA9554_PIN_BATTERY_ADC_ENABLE = 0;
 constexpr uint8_t TCA9554_PIN_SYS_EN = 0;
 constexpr uint8_t TCA9554_PIN_AUDIO_ENABLE = 0;
@@ -103,3 +129,4 @@ constexpr int PIN_AUDIO_WS = 45;
 constexpr int PIN_AUDIO_DIN = 10;
 constexpr int PIN_AUDIO_DOUT = 8;
 constexpr uint8_t ES8311_ADDRESS = 0x18;
+}  // namespace Board::Config
