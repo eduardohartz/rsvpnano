@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "board/BoardConfig.h"
+#include "board/BoardImu.h"
 
 class FocusTimer {
  public:
@@ -68,10 +69,6 @@ class FocusTimer {
   };
 
   bool initImu();
-  bool probeImuAddress(uint8_t address);
-  bool readRegister(uint8_t reg, uint8_t &value);
-  bool writeRegister(uint8_t reg, uint8_t value);
-  bool readRegisters(uint8_t startReg, uint8_t *buffer, size_t len);
   bool updateRegister(uint8_t reg, uint8_t mask, uint8_t value);
   bool readAccelerometer(float &x, float &y, float &z);
   void updateOrientation(uint32_t nowMs);
@@ -91,7 +88,7 @@ class FocusTimer {
       OrientationState orientation);
 
   bool imuAvailable_ = false;
-  uint8_t imuAddress_ = Board::Config::IMU_I2C_ADDRESS;
+  uint8_t imuAddress_ = Board::Imu::address();
   float accelScale_ = 4.0f / 32768.0f;
   OrientationState rawOrientation_ = OrientationState::Unknown;
   OrientationState stableOrientation_ = OrientationState::Unknown;

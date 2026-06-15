@@ -91,12 +91,19 @@ constexpr int kVirtualBufferWidth = kDisplayWidth;
 constexpr int kVirtualBufferHeight = kPanelNativeHeight;
 
 constexpr size_t kBytesPerPixel = sizeof(uint16_t);
-constexpr size_t kMaxChunkBytes = Board::Config::DISPLAY_TX_CHUNK_BYTES;
 constexpr int kTxBufferWidth = kDisplayWidth > kPanelNativeWidth ? kDisplayWidth : kPanelNativeWidth;
-constexpr int kMaxChunkPhysicalRows = kMaxChunkBytes / (kTxBufferWidth * kBytesPerPixel);
-static_assert(kMaxChunkPhysicalRows > 0, "Display chunk buffer must hold at least one row");
 
-constexpr size_t kTxBufferPixels = static_cast<size_t>(kTxBufferWidth) * kMaxChunkPhysicalRows;
+int maxChunkPhysicalRows() {
+  const size_t rowBytes = static_cast<size_t>(kTxBufferWidth) * kBytesPerPixel;
+  const size_t chunkBytes = Board::Display::txChunkBytes();
+  if (rowBytes == 0 || chunkBytes < rowBytes) {
+    return 1;
+  }
+
+  return static_cast<int>(chunkBytes / rowBytes);
+}
+
+size_t txBufferPixels() { return static_cast<size_t>(kTxBufferWidth) * maxChunkPhysicalRows(); }
 
 int logicalWidthForOrientation(Board::Config::UiOrientation orientation) {
   switch (orientation) {
@@ -884,6 +891,15 @@ void DisplayManager::setBrightnessPercent(uint8_t percent) {
   }
 }
 
+void DisplayManager::flashBacklight(uint8_t count, uint32_t onMs, uint32_t offMs) {
+  for (uint8_t i = 0; i < count; ++i) {
+    Board::Display::setBacklight(true);
+    delay(onMs);
+    Board::Display::setBacklight(false);
+    delay(offMs);
+  }
+}
+
 void DisplayManager::setDarkMode(bool darkMode) {
   if (darkMode_ == darkMode) {
     return;
@@ -1012,7 +1028,7 @@ bool DisplayManager::allocateBuffers() {
   }
 
   if (txBuffer_ == nullptr) {
-    txBufferBytes_ = kTxBufferPixels * sizeof(uint16_t);
+    txBufferBytes_ = txBufferPixels() * sizeof(uint16_t);
     txBuffer_ = static_cast<uint16_t *>(
         heap_caps_malloc(txBufferBytes_, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
   }
@@ -1045,13 +1061,14 @@ void DisplayManager::fillScreen(uint16_t color) {
     return;
   }
 
-  const size_t pixelsPerChunk = static_cast<size_t>(kPanelNativeWidth) * kMaxChunkPhysicalRows;
+  const int maxRows = maxChunkPhysicalRows();
+  const size_t pixelsPerChunk = static_cast<size_t>(kPanelNativeWidth) * maxRows;
   for (size_t i = 0; i < pixelsPerChunk; ++i) {
     txBuffer_[i] = panelColor(color);
   }
 
-  for (int yStart = 0; yStart < kPanelNativeHeight; yStart += kMaxChunkPhysicalRows) {
-    const int rows = std::min(kMaxChunkPhysicalRows, kPanelNativeHeight - yStart);
+  for (int yStart = 0; yStart < kPanelNativeHeight; yStart += maxRows) {
+    const int rows = std::min(maxRows, kPanelNativeHeight - yStart);
     if (!drawBitmap(0, yStart, kPanelNativeWidth, yStart + rows, txBuffer_)) {
       return;
     }
@@ -1741,9 +1758,9 @@ void DisplayManager::applyBrightness() {
 
 void DisplayManager::flushScaledFrame(int scale, int virtualWidth, int virtualHeight) {
   tickerPlaybackFrameActive_ = false;
-  for (int nativeYStart = 0; nativeYStart < kPanelNativeHeight;
-       nativeYStart += kMaxChunkPhysicalRows) {
-    const int nativeRows = std::min(kMaxChunkPhysicalRows, kPanelNativeHeight - nativeYStart);
+  const int maxRows = maxChunkPhysicalRows();
+  for (int nativeYStart = 0; nativeYStart < kPanelNativeHeight; nativeYStart += maxRows) {
+    const int nativeRows = std::min(maxRows, kPanelNativeHeight - nativeYStart);
     std::memset(txBuffer_, 0, txBufferBytes_);
 
     for (int localNativeY = 0; localNativeY < nativeRows; ++localNativeY) {
@@ -1793,9 +1810,9 @@ void DisplayManager::flushFullWidthLogicalBand(int yStart, int yEnd) {
     return;
   }
 
-  for (int nativeYStart = 0; nativeYStart < kPanelNativeHeight;
-       nativeYStart += kMaxChunkPhysicalRows) {
-    const int nativeRows = std::min(kMaxChunkPhysicalRows, kPanelNativeHeight - nativeYStart);
+  const int maxRows = maxChunkPhysicalRows();
+  for (int nativeYStart = 0; nativeYStart < kPanelNativeHeight; nativeYStart += maxRows) {
+    const int nativeRows = std::min(maxRows, kPanelNativeHeight - nativeYStart);
 
     for (int localNativeY = 0; localNativeY < nativeRows; ++localNativeY) {
       const int nativeY = nativeYStart + localNativeY;

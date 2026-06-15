@@ -2,16 +2,14 @@
 
 #include <Arduino.h>
 
-#include "board/BoardConfig.h"
-
 namespace Board::System {
 
-void begin();
-void lightSleepUntilBootButton();
-void holdBacklightOffForDeepSleep();
-void resetWakePeripherals();
-void resetTouchController();
-void deepSleepUntilConfiguredWake();
-void logStartupDiagnostics();
+    void begin();
+    void lightSleepUntilBootButton();
+    void holdBacklightOffForDeepSleep();
+    void resetWakePeripherals();
+    void deepSleepUntilConfiguredWake();
+    const char* wakeLabel(bool useRecoverableSoftOff, bool externalPowerPresent);
+    void logStartupDiagnostics();
 
-}  // namespace Board::System
+} // namespace Board::System

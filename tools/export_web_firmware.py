@@ -25,7 +25,7 @@ FLASH_EXPORTS = (
         "env": "waveshare_esp32s3_usb_msc_rev2",
         "binary": "rsvp-nano-rev2.bin",
         "manifest": "manifest-rev2.json",
-        "label": "RSVP Nano Touch LCD 3.49 rev2/GPIO42 firmware",
+        "label": "RSVP Nano Touch LCD 3.49 rev2 firmware",
     },
 )
 
@@ -48,7 +48,17 @@ OTA_EXPORTS = (
     {
         "env": "waveshare_esp32s3_usb_msc_rev2",
         "binary": "rsvp-nano-esp32-s3-touch-lcd-3.49-rev2-ota.bin",
-        "label": "RSVP Nano Touch LCD 3.49 rev2/GPIO42 OTA firmware",
+        "label": "RSVP Nano Touch LCD 3.49 rev2 OTA firmware",
+    },
+    {
+        "env": "waveshare_esp32s3_touch_amoled_18",
+        "binary": "rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin",
+        "label": "RSVP Nano Touch AMOLED 1.8 OTA firmware",
+    },
+    {
+        "env": "waveshare_esp32s3_touch_amoled_216",
+        "binary": "rsvp-nano-esp32-s3-touch-amoled-2.16-ota.bin",
+        "label": "RSVP Nano Touch AMOLED 2.16 OTA firmware",
     },
     {
         "env": "waveshare_esp32s3_touch_amoled_241",

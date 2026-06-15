@@ -23,8 +23,8 @@ class InstallFirmware extends HTMLElement {
       {
         manifest: "firmware/manifest-rev2.json",
         title: "Waveshare 3.49B rev2",
-        badge: "GPIO42",
-        note: "Use this if the default build flashes but brightness does not change.",
+        badge: "Rev2",
+        note: "Use this for the rev2 LCD board.",
       },
     ];
 

@@ -5,36 +5,25 @@
 
 namespace Board {
 
-enum class UiOrientation : uint8_t {
-  Landscape = 0,
-  LandscapeFlipped,
-  Portrait,
-  PortraitFlipped,
-};
+    enum class UiOrientation : uint8_t {
+        Landscape = 0,
+        LandscapeFlipped,
+        Portrait,
+        PortraitFlipped,
+    };
 
-enum class StorageBusKind : uint8_t {
-  SdMmc1Bit = 0,
-  SdSpi,
-};
+    struct BatteryStatus {
+        bool present = false;
+        float voltage = 0.0f;
+        uint8_t percent = 0;
+    };
 
-enum class PowerManagerKind : uint8_t {
-  Tca9554 = 0,
-  Axp2101,
-  DirectGpioBatteryHold,
-};
+    struct PowerDiagnosticSnapshot {
+        bool available = false;
+        bool externalPowerPresent = false;
+        uint8_t status1 = 0;
+        uint8_t status2 = 0;
+        uint8_t powerKeyIrqStatus = 0;
+    };
 
-struct BatteryStatus {
-  bool present = false;
-  float voltage = 0.0f;
-  uint8_t percent = 0;
-};
-
-struct PowerDiagnosticSnapshot {
-  bool available = false;
-  bool externalPowerPresent = false;
-  uint8_t status1 = 0;
-  uint8_t status2 = 0;
-  uint8_t powerKeyIrqStatus = 0;
-};
-
-}  // namespace Board
+} // namespace Board

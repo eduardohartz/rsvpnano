@@ -61,6 +61,7 @@ class DisplayManager {
   bool begin();
   void setBatteryLabel(const String &label);
   void setBrightnessPercent(uint8_t percent);
+  void flashBacklight(uint8_t count, uint32_t onMs, uint32_t offMs);
   void setDarkMode(bool darkMode);
   void setNightMode(bool nightMode);
   void setUiOrientation(Board::Config::UiOrientation orientation);

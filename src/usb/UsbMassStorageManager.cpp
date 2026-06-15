@@ -10,7 +10,7 @@
 #include <tusb.h>
 #include <driver/sdmmc_host.h>
 
-#include "board/BoardConfig.h"
+#include "board/BoardStorage.h"
 
 namespace {
 
@@ -143,12 +143,7 @@ bool UsbMassStorageManager::beginSdCard() {
 
   sdmmc_slot_config_t slotConfig = SDMMC_SLOT_CONFIG_DEFAULT();
 #ifdef SOC_SDMMC_USE_GPIO_MATRIX
-  slotConfig.clk = static_cast<gpio_num_t>(Board::Config::PIN_SD_CLK);
-  slotConfig.cmd = static_cast<gpio_num_t>(Board::Config::PIN_SD_CMD);
-  slotConfig.d0 = static_cast<gpio_num_t>(Board::Config::PIN_SD_D0);
-  slotConfig.d1 = GPIO_NUM_NC;
-  slotConfig.d2 = GPIO_NUM_NC;
-  slotConfig.d3 = GPIO_NUM_NC;
+  Board::Storage::configureSdMmcSlot(slotConfig);
 #endif
   slotConfig.width = 1;
 

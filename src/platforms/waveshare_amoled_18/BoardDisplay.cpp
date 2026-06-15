@@ -1,10 +1,26 @@
 #include "board/BoardDisplay.h"
 
 #include "drivers/display/sh8601/sh8601.h"
+#include "platforms/waveshare_amoled_18/WaveshareAmoled18.h"
 
 namespace {
 
-Sh8601::Context gDisplayContext;
+Sh8601::Context gDisplayContext = {
+    {
+        WaveshareAmoled18::DisplayWiring::kCsPin,
+        WaveshareAmoled18::DisplayWiring::kSclkPin,
+        WaveshareAmoled18::DisplayWiring::kData0Pin,
+        WaveshareAmoled18::DisplayWiring::kData1Pin,
+        WaveshareAmoled18::DisplayWiring::kData2Pin,
+        WaveshareAmoled18::DisplayWiring::kData3Pin,
+        WaveshareAmoled18::DisplayWiring::kResetPin,
+        WaveshareAmoled18::DisplayWiring::kBacklightPin,
+        WaveshareAmoled18::DisplayWiring::kPanelWidth,
+        WaveshareAmoled18::DisplayWiring::kPanelHeight,
+        WaveshareAmoled18::DisplayWiring::kTxChunkBytes,
+        WaveshareAmoled18::DisplayWiring::kUiRotated180,
+    },
+};
 
 }  // namespace
 
@@ -19,16 +35,13 @@ void enablePowerIfAvailable() {}
 
 void holdBacklightOffForDeepSleep() {}
 
-void setBacklight(bool on) { Sh8601::setDisplayOn(gDisplayContext, on); }
+uint16_t nativeWidth() { return WaveshareAmoled18::DisplayWiring::kPanelWidth; }
 
-void flashBacklight(uint8_t count, uint32_t onMs, uint32_t offMs) {
-  for (uint8_t i = 0; i < count; ++i) {
-    setBacklight(true);
-    delay(onMs);
-    setBacklight(false);
-    delay(offMs);
-  }
-}
+uint16_t nativeHeight() { return WaveshareAmoled18::DisplayWiring::kPanelHeight; }
+
+size_t txChunkBytes() { return WaveshareAmoled18::DisplayWiring::kTxChunkBytes; }
+
+void setBacklight(bool on) { Sh8601::setDisplayOn(gDisplayContext, on); }
 
 void setBrightness(uint8_t percent) { Sh8601::setBrightnessPercent(gDisplayContext, percent); }
 
