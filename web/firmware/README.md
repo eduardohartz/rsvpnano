@@ -8,7 +8,9 @@ This directory contains the browser-flasher image plus the published OTA binarie
 - `rsvp-nano-rev2.bin` is the full browser-flasher image for Touch LCD 3.49 rev2 boards.
 - `rsvp-nano-rev2-ota.bin` is the legacy app-only OTA binary for Touch LCD 3.49 rev2 devices.
 - `rsvp-nano-esp32-s3-touch-lcd-3.49-rev2-ota.bin` is the board-specific Touch LCD 3.49 rev2 OTA binary.
-- `rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin` is the board-specific Touch AMOLED 1.8 OTA binary.
+- `rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin` is the board-specific Touch AMOLED 1.8 v1 OTA binary.
+- `rsvp-nano-esp32-s3-touch-amoled-1.8-v2-ota.bin` is the board-specific Touch AMOLED 1.8 v2 OTA binary.
+- `rsvp-nano-esp32-s3-touch-amoled-2.06-ota.bin` is the board-specific Touch AMOLED 2.06 OTA binary.
 - `rsvp-nano-esp32-s3-touch-amoled-2.16-ota.bin` is the board-specific Touch AMOLED 2.16 OTA binary.
 - `rsvp-nano-esp32-s3-touch-amoled-2.41-ota.bin` is the board-specific Touch AMOLED 2.41 OTA binary.
 

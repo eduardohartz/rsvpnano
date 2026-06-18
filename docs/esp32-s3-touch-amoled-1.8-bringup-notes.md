@@ -2,11 +2,14 @@
 
 ## Target
 
-- PlatformIO env: `waveshare_esp32s3_touch_amoled_18`
+- PlatformIO envs: `waveshare_esp32s3_touch_amoled_18_v1`,
+  `waveshare_esp32s3_touch_amoled_18_v2`
 - Platform folder: `src/platforms/waveshare_amoled_18`
 - Private board facts: `src/platforms/waveshare_amoled_18/WaveshareAmoled18.h`
-- Display driver: `src/drivers/display/sh8601`
-- Touch driver: `src/drivers/touch/ft6336`
+- Version facts: `src/platforms/waveshare_amoled_18/v1/WaveshareAmoled18Version.h`,
+  `src/platforms/waveshare_amoled_18/v2/WaveshareAmoled18Version.h`
+- v1 display/touch: `src/drivers/display/sh8601`, `src/drivers/touch/ft6336`
+- v2 display/touch: `src/drivers/display/co5300`, `src/drivers/touch/cst92xx`
 - Power driver: `src/drivers/power/axp2101`
 - GPIO expander driver: `src/drivers/gpio/tca9554`
 - IMU driver: `src/drivers/imu/qmi8658`
@@ -14,10 +17,12 @@
 ## Hardware Mapping
 
 - SoC: `ESP32-S3R8`
-- Display: `SH8601`
+- v1 display: `SH8601`
+- v2 display: `CO5300`
 - Native panel geometry: `368x448`
 - App/UI geometry: `448x368` landscape
-- Touch: `FT3168` routed through the FT6336-compatible driver at I2C `0x38`
+- v1 touch: `FT3168` routed through the FT6336-compatible driver at I2C `0x38`
+- v2 touch: CST92xx-compatible touch at I2C `0x15`
 - IMU: `QMI8658` at I2C `0x6B`
 - PMU: `AXP2101`
 - GPIO expander: `TCA9554` at I2C `0x20`
@@ -28,10 +33,14 @@
 ## Current Implementation Shape
 
 The platform implementation exposes only the stable `Board::*` API. Board wiring and chip-specific
-facts stay in `WaveshareAmoled18.h`; driver checks stay inside the driver modules.
+facts stay in `WaveshareAmoled18.h` and the selected `v1`/`v2` version header; driver checks stay
+inside the driver modules.
 
-- `BoardDisplay.cpp` sequences the expander-controlled display/touch rails and calls the SH8601 driver.
-- `BoardInput.cpp` reads raw logical controls and raw touch contacts; debouncing and gestures live in `src/input/Input.cpp`.
+- `v1/BoardDisplay.cpp` binds the SH8601 driver.
+- `v2/BoardDisplay.cpp` binds the CO5300 driver.
+- `v1/BoardInput.cpp` reads FT6336-compatible touch contacts.
+- `v2/BoardInput.cpp` reads CST92xx-compatible touch contacts.
+- Shared input debouncing and gestures live in `src/input/Input.cpp`.
 - `BoardPower.cpp` owns AXP2101 battery and soft-off behavior.
 - `BoardStorage.cpp` owns SD bus setup and card-frequency probing.
 - `BoardImu.cpp` binds the QMI8658 driver to the shared I2C bus.
@@ -63,6 +72,9 @@ The old `PWR` + `BOOT` standby combo and board-config button-policy flags are no
 - Bring-up follows Waveshare's demos by pulsing expander pins `0`, `1`, and `2` low then high.
 - The SD demo drives expander pin `7` high before mounting the card, so board init keeps that pin high.
 - The FT3168 path applies the monitor-mode write through the touch driver.
+- The v2 CO5300 path keeps panel-memory rotation as a version fact. PR #116 showed that public
+  `PANEL_FLIP_180`-style flags make shared App/Input/Display code care about board-specific panel
+  mounting; this implementation keeps the fix local to `v2/WaveshareAmoled18Version.h`.
 - Touch polling uses the shared input module's recovery and backoff logic.
 - The IMU, touch, PMU, and expander share the same `Wire` bus.
 - The reader chrome keeps conservative safe margins for the small rounded panel.
@@ -78,5 +90,6 @@ The old `PWR` + `BOOT` standby combo and board-config button-policy flags are no
 
 ## Current Verification
 
-`waveshare_esp32s3_touch_amoled_18` built successfully during the board/input refactor readiness
-check. Hardware behavior still needs manual validation on the physical board.
+`waveshare_esp32s3_touch_amoled_18_v1` and `waveshare_esp32s3_touch_amoled_18_v2` build
+successfully after the version split. Hardware behavior still needs manual validation on the
+physical boards.

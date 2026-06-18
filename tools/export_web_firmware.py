@@ -51,9 +51,19 @@ OTA_EXPORTS = (
         "label": "RSVP Nano Touch LCD 3.49 rev2 OTA firmware",
     },
     {
-        "env": "waveshare_esp32s3_touch_amoled_18",
+        "env": "waveshare_esp32s3_touch_amoled_18_v1",
         "binary": "rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin",
-        "label": "RSVP Nano Touch AMOLED 1.8 OTA firmware",
+        "label": "RSVP Nano Touch AMOLED 1.8 v1 OTA firmware",
+    },
+    {
+        "env": "waveshare_esp32s3_touch_amoled_18_v2",
+        "binary": "rsvp-nano-esp32-s3-touch-amoled-1.8-v2-ota.bin",
+        "label": "RSVP Nano Touch AMOLED 1.8 v2 OTA firmware",
+    },
+    {
+        "env": "waveshare_esp32s3_touch_amoled_206",
+        "binary": "rsvp-nano-esp32-s3-touch-amoled-2.06-ota.bin",
+        "label": "RSVP Nano Touch AMOLED 2.06 OTA firmware",
     },
     {
         "env": "waveshare_esp32s3_touch_amoled_216",

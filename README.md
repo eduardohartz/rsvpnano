@@ -385,7 +385,10 @@ Current firmware environments:
 - `waveshare_esp32s3_rev2`: Touch LCD 3.49 rev2.
 - `waveshare_esp32s3_usb_msc`: Touch LCD 3.49 rev1 USB transfer build.
 - `waveshare_esp32s3_usb_msc_rev2`: Touch LCD 3.49 rev2 USB transfer build.
-- `waveshare_esp32s3_touch_amoled_18`: Touch AMOLED 1.8.
+- `waveshare_esp32s3_touch_amoled_18_v1`: Touch AMOLED 1.8 v1.
+- `waveshare_esp32s3_touch_amoled_18`: Touch AMOLED 1.8 v1 compatibility alias.
+- `waveshare_esp32s3_touch_amoled_18_v2`: Touch AMOLED 1.8 v2.
+- `waveshare_esp32s3_touch_amoled_206`: Touch AMOLED 2.06.
 - `waveshare_esp32s3_touch_amoled_216`: Touch AMOLED 2.16.
 - `waveshare_esp32s3_touch_amoled_241`: Touch AMOLED 2.41.
 
@@ -417,6 +420,8 @@ web/firmware/rsvp-nano-rev2-ota.bin
 web/firmware/rsvp-nano-esp32-s3-touch-lcd-3.49-ota.bin
 web/firmware/rsvp-nano-esp32-s3-touch-lcd-3.49-rev2-ota.bin
 web/firmware/rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin
+web/firmware/rsvp-nano-esp32-s3-touch-amoled-1.8-v2-ota.bin
+web/firmware/rsvp-nano-esp32-s3-touch-amoled-2.06-ota.bin
 web/firmware/rsvp-nano-esp32-s3-touch-amoled-2.16-ota.bin
 web/firmware/rsvp-nano-esp32-s3-touch-amoled-2.41-ota.bin
 web/firmware/manifest.json

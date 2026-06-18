@@ -20,6 +20,8 @@ DEFAULT_REQUIRED_ASSETS = (
     "rsvp-nano-ota.bin",
     "rsvp-nano-esp32-s3-touch-lcd-3.49-ota.bin",
     "rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin",
+    "rsvp-nano-esp32-s3-touch-amoled-1.8-v2-ota.bin",
+    "rsvp-nano-esp32-s3-touch-amoled-2.06-ota.bin",
     "rsvp-nano-esp32-s3-touch-amoled-2.16-ota.bin",
     "rsvp-nano-esp32-s3-touch-amoled-2.41-ota.bin",
 )
