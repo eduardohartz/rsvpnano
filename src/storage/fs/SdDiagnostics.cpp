@@ -1,7 +1,6 @@
 #include "storage/fs/SdDiagnostics.h"
 
 #include <Preferences.h>
-#include <SD_MMC.h>
 #include <algorithm>
 #include <array>
 #include <cerrno>
@@ -69,7 +68,7 @@ namespace SdDiagnostics {
         }
 
         uint32_t currentCardSizeMb() {
-            return static_cast<uint32_t>(SD_MMC.cardSize() / kBytesPerMegabyte);
+            return static_cast<uint32_t>(Board::Storage::cardSize() / kBytesPerMegabyte);
         }
 
         FrequencyCache readFrequencyCache() {
@@ -94,7 +93,7 @@ namespace SdDiagnostics {
         }
 
         bool cacheMatchesMountedCard(const FrequencyCache& cache) {
-            return cache.valid && cache.cardType == SD_MMC.cardType() && cache.sizeMb == currentCardSizeMb();
+            return cache.valid && cache.cardType == Board::Storage::cardType() && cache.sizeMb == currentCardSizeMb();
         }
 
         void writeFrequencyCache(int frequencyKhz) {
@@ -102,7 +101,7 @@ namespace SdDiagnostics {
                 return;
             }
 
-            const uint8_t cardType = SD_MMC.cardType();
+            const uint8_t cardType = Board::Storage::cardType();
             const uint32_t sizeMb = currentCardSizeMb();
             const FrequencyCache cache = readFrequencyCache();
             if (cache.valid && cache.frequencyKhz == frequencyKhz && cache.cardType == cardType
@@ -143,7 +142,7 @@ namespace SdDiagnostics {
 
         bool removeProbeFile(const String& path, const char* tag) {
             errno = 0;
-            const bool removed = SD_MMC.remove(path);
+            const bool removed = Board::Storage::filesystem().remove(path);
             const int removeErrno = errno;
             if (!removed && StorageFiles::fileExists(path)) {
                 StorageFiles::logError(tag, "remove probe", path, removeErrno);
@@ -155,7 +154,7 @@ namespace SdDiagnostics {
         bool writeReadProbeFile(const String& path, size_t bytes, const char* tag) {
             Serial.printf("[%s] write/read probe path=%s bytes=%u\n", tag, path.c_str(),
                           static_cast<unsigned int>(bytes));
-            SD_MMC.remove(path);
+            Board::Storage::filesystem().remove(path);
 
             static uint8_t writeBuffer[kProbeChunkBytes];
             static uint8_t readBuffer[kProbeChunkBytes];
@@ -163,7 +162,7 @@ namespace SdDiagnostics {
             {
                 // Write the deterministic probe payload.
                 errno = 0;
-                File file = SD_MMC.open(path, FILE_WRITE);
+                File file = Board::Storage::filesystem().open(path, FILE_WRITE);
                 const int openErrno = errno;
                 if (!file) {
                     StorageFiles::logError(tag, "open FILE_WRITE", path, openErrno);
@@ -192,7 +191,7 @@ namespace SdDiagnostics {
 
             {
                 // Reopen and verify the exact bytes to catch flaky card timings.
-                File file = SD_MMC.open(path, FILE_READ);
+                File file = Board::Storage::filesystem().open(path, FILE_READ);
                 if (!file || file.isDirectory()) {
                     if (file) {
                         file.close();
@@ -245,14 +244,14 @@ namespace SdDiagnostics {
 
         bool tryMountFrequency(bool& mounted, int frequencyKhz) {
             Serial.printf("[sd-check] trying mount at %d kHz\n", frequencyKhz);
-            SD_MMC.end();
-            mounted = SD_MMC.begin(StoragePaths::kMountPoint, true, false, frequencyKhz, 5);
+            Board::Storage::end();
+            mounted = Board::Storage::mount(StoragePaths::kMountPoint, frequencyKhz);
             if (!mounted) {
                 return false;
             }
             if (!writeReadProbeFile(kFrequencyProbePath, kFrequencyProbeBytes, "sd-probe")) {
                 Serial.printf("[sd-check] frequency %d kHz failed sustained probe\n", frequencyKhz);
-                SD_MMC.end();
+                Board::Storage::end();
                 mounted = false;
                 return false;
             }
@@ -267,7 +266,7 @@ namespace SdDiagnostics {
         }
 
         void unmountCard(bool& mounted) {
-            SD_MMC.end();
+            Board::Storage::end();
             mounted = false;
             sMountedFrequencyKhz = 0;
         }
@@ -282,8 +281,16 @@ namespace SdDiagnostics {
             return true;
         }
 
+        if (!Board::Storage::supportsFrequencySelection()) {
+            mounted = Board::Storage::mount(StoragePaths::kMountPoint, SDMMC_FREQ_DEFAULT);
+            if (mounted) {
+                recordMountedFrequency(SDMMC_FREQ_DEFAULT, mountedFrequencyKhz);
+            }
+            return mounted;
+        }
+
         if (!Board::Storage::setSdMmcPins()) {
-            Serial.println("[sd-check] SD_MMC pin setup failed");
+            Serial.println("[sd-check] SD pin setup failed");
             return false;
         }
 
@@ -379,8 +386,8 @@ namespace SdDiagnostics {
             return result;
         }
 
-        result.sizeMb = SD_MMC.cardSize() / kBytesPerMegabyte;
-        result.cardType = cardTypeLabel(SD_MMC.cardType(), result.sizeMb);
+        result.sizeMb = Board::Storage::cardSize() / kBytesPerMegabyte;
+        result.cardType = cardTypeLabel(Board::Storage::cardType(), result.sizeMb);
         result.frequencyKhz = sMountedFrequencyKhz;
         Serial.printf("[sd-check] mounted type=%s size=%llu MB freq=%d kHz\n", result.cardType.c_str(), result.sizeMb,
                       result.frequencyKhz);

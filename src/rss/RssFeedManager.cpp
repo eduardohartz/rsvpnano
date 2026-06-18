@@ -1,7 +1,7 @@
 #include "rss/RssFeedManager.h"
 
 #include <HTTPClient.h>
-#include <SD_MMC.h>
+#include "board/BoardStorage.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <algorithm>
@@ -495,7 +495,7 @@ RssFeedManager::Result RssFeedManager::checkFeeds(const OtaUpdater::Config &wifi
 
   File config;
   for (const char *path : kConfigPaths) {
-    config = SD_MMC.open(path);
+    config = Board::Storage::filesystem().open(path);
     if (config && !config.isDirectory()) {
       break;
     }
@@ -871,9 +871,9 @@ bool RssFeedManager::saveItem(const FeedItem &item, Preferences &preferences, Re
   const String finalPath =
       String(StoragePaths::kArticleFilesPath) + "/" + filenameForItem(item);
   const String tmpPath = finalPath + ".tmp";
-  SD_MMC.remove(tmpPath);
+  Board::Storage::filesystem().remove(tmpPath);
 
-  File file = SD_MMC.open(tmpPath, FILE_WRITE);
+  File file = Board::Storage::filesystem().open(tmpPath, FILE_WRITE);
   if (!file) {
     Serial.printf("[rss] could not create %s\n", tmpPath.c_str());
     return false;
@@ -898,9 +898,9 @@ bool RssFeedManager::saveItem(const FeedItem &item, Preferences &preferences, Re
   file.println(body);
   file.close();
 
-  SD_MMC.remove(finalPath);
-  if (!SD_MMC.rename(tmpPath, finalPath)) {
-    SD_MMC.remove(tmpPath);
+  Board::Storage::filesystem().remove(finalPath);
+  if (!Board::Storage::filesystem().rename(tmpPath, finalPath)) {
+    Board::Storage::filesystem().remove(tmpPath);
     Serial.printf("[rss] rename failed %s\n", finalPath.c_str());
     return false;
   }

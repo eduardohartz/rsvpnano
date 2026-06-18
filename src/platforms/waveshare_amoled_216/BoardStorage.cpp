@@ -1,8 +1,24 @@
 #include "board/BoardStorage.h"
 
+#include <SD_MMC.h>
+
 #include "platforms/waveshare_amoled_216/WaveshareAmoled216.h"
 
 namespace Board::Storage {
+
+fs::FS &filesystem() { return SD_MMC; }
+
+bool mount(const char *mountPoint, int frequencyKhz) {
+  return SD_MMC.begin(mountPoint, true, false, frequencyKhz, 5);
+}
+
+void end() { SD_MMC.end(); }
+
+uint64_t cardSize() { return SD_MMC.cardSize(); }
+
+uint8_t cardType() { return SD_MMC.cardType(); }
+
+bool supportsFrequencySelection() { return true; }
 
 bool setSdMmcPins() {
   return SD_MMC.setPins(WaveshareAmoled216::Storage::kSdClockPin,

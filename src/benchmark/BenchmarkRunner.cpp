@@ -1,7 +1,7 @@
 #include "benchmark/BenchmarkRunner.h"
 
 #include <Arduino.h>
-#include <SD_MMC.h>
+#include "board/BoardStorage.h"
 #include <esp_heap_caps.h>
 
 #include "board/Board.h"
@@ -100,7 +100,7 @@ bool benchmarkSdWriteRead() {
   }
 
   uint32_t expectedChecksum = 2166136261UL;
-  File file = SD_MMC.open(kSdWritePath, FILE_WRITE);
+  File file = Board::Storage::filesystem().open(kSdWritePath, FILE_WRITE);
   if (!file) {
     free(buffer);
     return false;
@@ -120,7 +120,7 @@ bool benchmarkSdWriteRead() {
   file.close();
 
   uint32_t actualChecksum = 2166136261UL;
-  file = SD_MMC.open(kSdWritePath, FILE_READ);
+  file = Board::Storage::filesystem().open(kSdWritePath, FILE_READ);
   if (!file) {
     free(buffer);
     return false;
@@ -136,7 +136,7 @@ bool benchmarkSdWriteRead() {
     actualChecksum = checksumBytes(buffer, chunk) ^ (actualChecksum * 16777619UL);
   }
   file.close();
-  SD_MMC.remove(kSdWritePath);
+  Board::Storage::filesystem().remove(kSdWritePath);
   free(buffer);
   return expectedChecksum == actualChecksum;
 }
@@ -158,9 +158,9 @@ bool benchmarkDraculaConversion() {
     return false;
   }
 
-  SD_MMC.remove(kDraculaRsvpPath);
-  SD_MMC.remove(StoragePaths::siblingPathWithExtension(kDraculaEpubPath, StoragePaths::kTempExtension));
-  SD_MMC.remove(
+  Board::Storage::filesystem().remove(kDraculaRsvpPath);
+  Board::Storage::filesystem().remove(StoragePaths::siblingPathWithExtension(kDraculaEpubPath, StoragePaths::kTempExtension));
+  Board::Storage::filesystem().remove(
       StoragePaths::siblingPathWithExtension(kDraculaEpubPath, StoragePaths::kFailedExtension));
 
   EpubConverter::Options options;
