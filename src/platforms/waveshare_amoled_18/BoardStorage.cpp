@@ -16,7 +16,7 @@ void end() { SD_MMC.end(); }
 
 uint64_t cardSize() { return SD_MMC.cardSize(); }
 
-uint8_t cardType() { return SD_MMC.cardType(); }
+CardType cardType() { return static_cast<CardType>(SD_MMC.cardType()); }
 
 bool supportsFrequencySelection() { return true; }
 

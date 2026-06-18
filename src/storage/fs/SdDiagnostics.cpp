@@ -37,19 +37,36 @@ namespace SdDiagnostics {
 
         struct FrequencyCache {
             int frequencyKhz = 0;
-            uint8_t cardType = CARD_NONE;
+            Board::Storage::CardType cardType = Board::Storage::CardType::None;
             uint32_t sizeMb = 0;
             bool valid = false;
         };
 
-        const char* cardTypeLabel(uint8_t cardType, uint64_t sizeMb) {
+        Board::Storage::CardType cardTypeFromByte(uint8_t value) {
+            switch (static_cast<Board::Storage::CardType>(value)) {
+            case Board::Storage::CardType::Mmc:
+            case Board::Storage::CardType::Sd:
+            case Board::Storage::CardType::Sdhc:
+                return static_cast<Board::Storage::CardType>(value);
+            case Board::Storage::CardType::None:
+            default:
+                return Board::Storage::CardType::None;
+            }
+        }
+
+        uint8_t cardTypeByte(Board::Storage::CardType cardType) {
+            return static_cast<uint8_t>(cardType);
+        }
+
+        const char* cardTypeLabel(Board::Storage::CardType cardType, uint64_t sizeMb) {
             switch (cardType) {
-            case CARD_MMC:
+            case Board::Storage::CardType::Mmc:
                 return "MMC";
-            case CARD_SD:
+            case Board::Storage::CardType::Sd:
                 return "SDSC";
-            case CARD_SDHC:
+            case Board::Storage::CardType::Sdhc:
                 return sizeMb > kSdxcMinSizeMb ? "SDXC" : "SDHC";
+            case Board::Storage::CardType::None:
             default:
                 return "Unknown";
             }
@@ -75,18 +92,20 @@ namespace SdDiagnostics {
             Preferences preferences;
             if (!preferences.begin(kPreferencesNamespace, true)) {
                 Serial.println("[sd-check] frequency cache unavailable");
-                return {};
+                return FrequencyCache{};
             }
             FrequencyCache cache;
             cache.frequencyKhz = preferences.getInt(kPreferenceFrequencyKhz, 0);
-            cache.cardType = preferences.getUChar(kPreferenceCardType, CARD_NONE);
+            cache.cardType =
+                cardTypeFromByte(preferences.getUChar(kPreferenceCardType, cardTypeByte(Board::Storage::CardType::None)));
             cache.sizeMb = preferences.getUInt(kPreferenceCardSizeMb, 0);
             preferences.end();
-            if (!isSupportedFrequency(cache.frequencyKhz) || cache.cardType == CARD_NONE || cache.sizeMb == 0) {
+            if (!isSupportedFrequency(cache.frequencyKhz) ||
+                cache.cardType == Board::Storage::CardType::None || cache.sizeMb == 0) {
                 if (cache.frequencyKhz != 0) {
                     Serial.printf("[sd-check] ignoring incomplete cached frequency %d kHz\n", cache.frequencyKhz);
                 }
-                return {};
+                return FrequencyCache{};
             }
             cache.valid = true;
             return cache;
@@ -101,7 +120,7 @@ namespace SdDiagnostics {
                 return;
             }
 
-            const uint8_t cardType = Board::Storage::cardType();
+            const Board::Storage::CardType cardType = Board::Storage::cardType();
             const uint32_t sizeMb = currentCardSizeMb();
             const FrequencyCache cache = readFrequencyCache();
             if (cache.valid && cache.frequencyKhz == frequencyKhz && cache.cardType == cardType
@@ -115,7 +134,7 @@ namespace SdDiagnostics {
                 return;
             }
             preferences.putInt(kPreferenceFrequencyKhz, frequencyKhz);
-            preferences.putUChar(kPreferenceCardType, cardType);
+            preferences.putUChar(kPreferenceCardType, cardTypeByte(cardType));
             preferences.putUInt(kPreferenceCardSizeMb, sizeMb);
             preferences.end();
         }

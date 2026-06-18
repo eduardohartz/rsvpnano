@@ -1,7 +1,7 @@
 #include "storage/StorageManager.h"
 
-#include "board/BoardStorage.h"
 #include <cstdint>
+#include "board/BoardStorage.h"
 
 #include "book/BookMetadata.h"
 #include "storage/fs/SdDiagnostics.h"

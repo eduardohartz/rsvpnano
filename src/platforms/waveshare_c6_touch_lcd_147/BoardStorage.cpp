@@ -22,7 +22,7 @@ void end() { SD.end(); }
 
 uint64_t cardSize() { return SD.cardSize(); }
 
-uint8_t cardType() { return SD.cardType(); }
+CardType cardType() { return static_cast<CardType>(SD.cardType()); }
 
 bool supportsFrequencySelection() { return false; }
 
