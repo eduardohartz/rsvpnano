@@ -42,11 +42,8 @@ constexpr gpio_num_t kBacklightGpio = Revision::kBacklightGpio;
 constexpr uint16_t kPanelWidth = 172;
 constexpr uint16_t kPanelHeight = 640;
 constexpr size_t kTxChunkBytes = 16 * 1024;
-constexpr bool kUiRotated180 = true;
-constexpr Board::UiOrientation kDefaultUiOrientation =
-    kUiRotated180 ? Board::UiOrientation::LandscapeFlipped : Board::UiOrientation::Landscape;
-constexpr Board::UiOrientation kRotatedUiOrientation =
-    kUiRotated180 ? Board::UiOrientation::Landscape : Board::UiOrientation::LandscapeFlipped;
+constexpr bool kPanelMemoryRotated180 = true;
+constexpr Board::UiOrientation kDefaultUiOrientation = Board::UiOrientation::LandscapeFlipped;
 }
 
 namespace WaveshareLcd349::ImuWiring {

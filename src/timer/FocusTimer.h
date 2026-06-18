@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-#include "board/BoardConfig.h"
 #include "board/BoardImu.h"
+#include "board/BoardTypes.h"
 
 class FocusTimer {
  public:
@@ -42,7 +42,7 @@ class FocusTimer {
   bool isActiveTimerRunning() const;
   State state() const;
   Genre genre() const;
-  Board::Config::UiOrientation uiOrientation() const;
+  Board::UiOrientation uiOrientation() const;
   uint32_t remainingMs(uint32_t nowMs) const;
   uint8_t progressPercent(uint32_t nowMs) const;
   uint8_t completedTouchBlocks() const;
@@ -84,8 +84,7 @@ class FocusTimer {
   bool timerExpired(uint32_t nowMs) const;
   static bool isShortSide(OrientationState orientation);
   static OrientationState oppositeShortSide(OrientationState orientation);
-  static Board::Config::UiOrientation portraitOrientationForShortSide(
-      OrientationState orientation);
+  static Board::UiOrientation portraitOrientationForShortSide(OrientationState orientation);
 
   bool imuAvailable_ = false;
   uint8_t imuAddress_ = Board::Imu::address();

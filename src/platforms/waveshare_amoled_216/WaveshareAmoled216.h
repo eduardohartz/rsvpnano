@@ -43,11 +43,8 @@ constexpr int kBacklightPin = -1;
 constexpr uint16_t kPanelWidth = 480;
 constexpr uint16_t kPanelHeight = 480;
 constexpr size_t kTxChunkBytes = 32 * 1024;
-constexpr bool kUiRotated180 = false;
-constexpr Board::UiOrientation kDefaultUiOrientation =
-    kUiRotated180 ? Board::UiOrientation::LandscapeFlipped : Board::UiOrientation::Landscape;
-constexpr Board::UiOrientation kRotatedUiOrientation =
-    kUiRotated180 ? Board::UiOrientation::Landscape : Board::UiOrientation::LandscapeFlipped;
+constexpr bool kPanelMemoryRotated180 = false;
+constexpr Board::UiOrientation kDefaultUiOrientation = Board::UiOrientation::Landscape;
 }
 
 namespace WaveshareAmoled216::ImuWiring {

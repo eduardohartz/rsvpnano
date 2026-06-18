@@ -37,7 +37,9 @@ constexpr LcdCommand kQspiInit[] = {
     {0x29, {0x00}, 0, 10},
 };
 
-uint8_t defaultMadctl(const Co5300::Context &context) { return context.config.uiRotated180 ? 0xC0 : 0x00; }
+uint8_t defaultMadctl(const Co5300::Context &context) {
+  return context.config.panelMemoryRotated180 ? 0xC0 : 0x00;
+}
 
 size_t sendBufferPixels(const Co5300::Context &context) {
   constexpr size_t kFallbackPixels = 0x4000;

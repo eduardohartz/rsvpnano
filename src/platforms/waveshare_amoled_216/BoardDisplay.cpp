@@ -18,7 +18,7 @@ Co5300::Context gDisplayContext = {
         WaveshareAmoled216::DisplayWiring::kPanelWidth,
         WaveshareAmoled216::DisplayWiring::kPanelHeight,
         WaveshareAmoled216::DisplayWiring::kTxChunkBytes,
-        WaveshareAmoled216::DisplayWiring::kUiRotated180,
+        WaveshareAmoled216::DisplayWiring::kPanelMemoryRotated180,
     },
 };
 
@@ -34,6 +34,14 @@ bool begin() {
 void enablePowerIfAvailable() {}
 
 void holdBacklightOffForDeepSleep() {}
+
+Board::UiOrientation defaultUiOrientation() {
+  return WaveshareAmoled216::DisplayWiring::kDefaultUiOrientation;
+}
+
+Board::UiOrientation rotatedUiOrientation() {
+  return Board::oppositeUiOrientation(WaveshareAmoled216::DisplayWiring::kDefaultUiOrientation);
+}
 
 uint16_t nativeWidth() { return WaveshareAmoled216::DisplayWiring::kPanelWidth; }
 

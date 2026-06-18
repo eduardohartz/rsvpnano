@@ -17,7 +17,7 @@ namespace BoardDrivers::Display {
         uint16_t panelWidth = 0;
         uint16_t panelHeight = 0;
         size_t txChunkBytes = 0;
-        bool uiRotated180 = false;
+        bool panelMemoryRotated180 = false;
         uint16_t columnOffset = 0;
         uint16_t rowOffset = 0;
     };

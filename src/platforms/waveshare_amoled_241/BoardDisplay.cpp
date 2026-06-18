@@ -24,7 +24,7 @@ Rm690b0::Context gDisplayContext = {
         WaveshareAmoled241::DisplayWiring::kPanelWidth,
         WaveshareAmoled241::DisplayWiring::kPanelHeight,
         WaveshareAmoled241::DisplayWiring::kTxChunkBytes,
-        WaveshareAmoled241::DisplayWiring::kUiRotated180,
+        WaveshareAmoled241::DisplayWiring::kPanelMemoryRotated180,
     },
 };
 
@@ -50,6 +50,14 @@ void enablePowerIfAvailable() {
 }
 
 void holdBacklightOffForDeepSleep() {}
+
+Board::UiOrientation defaultUiOrientation() {
+  return WaveshareAmoled241::DisplayWiring::kDefaultUiOrientation;
+}
+
+Board::UiOrientation rotatedUiOrientation() {
+  return Board::oppositeUiOrientation(WaveshareAmoled241::DisplayWiring::kDefaultUiOrientation);
+}
 
 uint16_t nativeWidth() { return WaveshareAmoled241::DisplayWiring::kPanelWidth; }
 

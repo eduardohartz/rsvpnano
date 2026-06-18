@@ -10,7 +10,6 @@ constexpr const char *kOtaAssetName = "rsvp-nano-esp32-s3-touch-amoled-1.8-ota.b
 
 constexpr bool kPanelMemoryRotated180 = true;
 constexpr Board::UiOrientation kDefaultUiOrientation = Board::UiOrientation::Landscape;
-constexpr Board::UiOrientation kRotatedUiOrientation = Board::UiOrientation::LandscapeFlipped;
 
 constexpr int kTouchIrqPin = -1;
 constexpr uint8_t kTouchAddress = 0x38;

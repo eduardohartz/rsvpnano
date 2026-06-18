@@ -2,11 +2,15 @@
 
 #include <Arduino.h>
 
+#include "board/BoardTypes.h"
+
 namespace Board::Display {
 
     bool begin();
     void enablePowerIfAvailable();
     void holdBacklightOffForDeepSleep();
+    Board::UiOrientation defaultUiOrientation();
+    Board::UiOrientation rotatedUiOrientation();
     uint16_t nativeWidth();
     uint16_t nativeHeight();
     size_t txChunkBytes();

@@ -22,7 +22,7 @@ namespace {
             WaveshareLcd349::DisplayWiring::kPanelWidth,
             WaveshareLcd349::DisplayWiring::kPanelHeight,
             WaveshareLcd349::DisplayWiring::kTxChunkBytes,
-            WaveshareLcd349::DisplayWiring::kUiRotated180,
+            WaveshareLcd349::DisplayWiring::kPanelMemoryRotated180,
 
 
         },
@@ -61,6 +61,14 @@ namespace Board::Display {
         gpio_set_level(WaveshareLcd349::DisplayWiring::kBacklightGpio, 1);
         gpio_hold_en(WaveshareLcd349::DisplayWiring::kBacklightGpio);
         gpio_deep_sleep_hold_en();
+    }
+
+    Board::UiOrientation defaultUiOrientation() {
+        return WaveshareLcd349::DisplayWiring::kDefaultUiOrientation;
+    }
+
+    Board::UiOrientation rotatedUiOrientation() {
+        return Board::oppositeUiOrientation(WaveshareLcd349::DisplayWiring::kDefaultUiOrientation);
     }
 
     uint16_t nativeWidth() {

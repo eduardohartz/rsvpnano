@@ -423,10 +423,10 @@ private:
     const char* inputGestureName(Input::Gesture gesture) const;
     bool isFocusTimerMenuScreen(MenuScreen screen) const;
     bool scrollModeEnabled() const;
-    void applyUiOrientation(Board::Config::UiOrientation orientation);
+    void applyUiOrientation(Board::UiOrientation orientation);
     void applyReaderUiOrientation();
     void reloadRuntimePreferences(uint32_t nowMs, bool rerender);
-    Board::Config::UiOrientation readerUiOrientation() const;
+    Board::UiOrientation readerUiOrientation() const;
     bool uiRotated180() const;
     uint8_t effectiveAnchorPercent() const;
     DisplayManager::TypographyConfig effectiveTypographyConfig() const;

@@ -4,8 +4,6 @@
 
 namespace Board::Config {
 
-using UiOrientation = Board::UiOrientation;
-
 constexpr const char *BOARD_ID = WaveshareAmoled18::Version::kBoardId;
 constexpr const char *BOARD_LABEL = WaveshareAmoled18::Version::kBoardLabel;
 constexpr const char *OTA_ASSET_NAME = WaveshareAmoled18::Version::kOtaAssetName;
@@ -25,12 +23,5 @@ constexpr int READER_CHROME_MARGIN_TOP = 24;
 constexpr int READER_CHROME_MARGIN_BOTTOM = 24;
 constexpr int READER_BATTERY_MARGIN_X = 64;
 constexpr int READER_BATTERY_MARGIN_TOP = 32;
-
-constexpr bool UI_ROTATED_180 = WaveshareAmoled18::DisplayWiring::kDefaultUiOrientation ==
-                                UiOrientation::LandscapeFlipped;
-constexpr UiOrientation DEFAULT_UI_ORIENTATION =
-    WaveshareAmoled18::DisplayWiring::kDefaultUiOrientation;
-constexpr UiOrientation ROTATED_UI_ORIENTATION =
-    WaveshareAmoled18::DisplayWiring::kRotatedUiOrientation;
 
 }  // namespace Board::Config

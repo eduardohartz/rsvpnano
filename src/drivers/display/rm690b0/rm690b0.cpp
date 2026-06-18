@@ -37,7 +37,9 @@ constexpr LcdCommand kQspiInit[] = {
     {0x29, {0x00}, 0, 10},
 };
 
-uint8_t defaultMadctl(const Rm690b0::Context &context) { return context.config.uiRotated180 ? 0x10 : 0x00; }
+uint8_t defaultMadctl(const Rm690b0::Context &context) {
+  return context.config.panelMemoryRotated180 ? 0x10 : 0x00;
+}
 
 size_t sendBufferPixels(const Rm690b0::Context &context) {
   constexpr size_t kFallbackPixels = 0x4000;

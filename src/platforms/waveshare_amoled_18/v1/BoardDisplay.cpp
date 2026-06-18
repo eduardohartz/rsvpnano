@@ -35,6 +35,14 @@ void enablePowerIfAvailable() {}
 
 void holdBacklightOffForDeepSleep() {}
 
+Board::UiOrientation defaultUiOrientation() {
+  return WaveshareAmoled18::DisplayWiring::kDefaultUiOrientation;
+}
+
+Board::UiOrientation rotatedUiOrientation() {
+  return Board::oppositeUiOrientation(WaveshareAmoled18::DisplayWiring::kDefaultUiOrientation);
+}
+
 uint16_t nativeWidth() { return WaveshareAmoled18::DisplayWiring::kPanelWidth; }
 
 uint16_t nativeHeight() { return WaveshareAmoled18::DisplayWiring::kPanelHeight; }

@@ -4,8 +4,6 @@
 
 namespace Board::Config {
 
-using UiOrientation = Board::UiOrientation;
-
 constexpr const char *BOARD_ID = WaveshareLcd349::Revision::kBoardId;
 constexpr const char *BOARD_LABEL = WaveshareLcd349::Revision::kBoardLabel;
 constexpr const char *OTA_ASSET_NAME = WaveshareLcd349::Revision::kOtaAssetName;
@@ -25,11 +23,5 @@ constexpr int READER_CHROME_MARGIN_TOP = 8;
 constexpr int READER_CHROME_MARGIN_BOTTOM = 8;
 constexpr int READER_BATTERY_MARGIN_X = READER_CHROME_MARGIN_X;
 constexpr int READER_BATTERY_MARGIN_TOP = READER_CHROME_MARGIN_TOP;
-
-constexpr bool UI_ROTATED_180 = WaveshareLcd349::DisplayWiring::kUiRotated180;
-constexpr UiOrientation DEFAULT_UI_ORIENTATION =
-    WaveshareLcd349::DisplayWiring::kDefaultUiOrientation;
-constexpr UiOrientation ROTATED_UI_ORIENTATION =
-    WaveshareLcd349::DisplayWiring::kRotatedUiOrientation;
 
 }  // namespace Board::Config

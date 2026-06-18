@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <vector>
 
-#include "board/BoardConfig.h"
+#include "board/BoardTypes.h"
 
 class DisplayManager {
  public:
@@ -56,6 +56,7 @@ class DisplayManager {
     bool active = false;
   };
 
+  DisplayManager();
   ~DisplayManager();
 
   bool begin();
@@ -64,7 +65,7 @@ class DisplayManager {
   void flashBacklight(uint8_t count, uint32_t onMs, uint32_t offMs);
   void setDarkMode(bool darkMode);
   void setNightMode(bool nightMode);
-  void setUiOrientation(Board::Config::UiOrientation orientation);
+  void setUiOrientation(Board::UiOrientation orientation);
   void setUiRotated180(bool rotated180);
   void setTypographyConfig(const TypographyConfig &config);
   TypographyConfig typographyConfig() const;
@@ -196,7 +197,7 @@ class DisplayManager {
   uint8_t brightnessPercent_ = 100;
   bool darkMode_ = true;
   bool nightMode_ = false;
-  Board::Config::UiOrientation uiOrientation_ = Board::Config::DEFAULT_UI_ORIENTATION;
+  Board::UiOrientation uiOrientation_ = Board::UiOrientation::Landscape;
   bool tickerPlaybackFrameActive_ = false;
   String lastRenderKey_;
   String batteryLabel_;

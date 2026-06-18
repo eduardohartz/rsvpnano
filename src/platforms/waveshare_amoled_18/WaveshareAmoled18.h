@@ -52,7 +52,6 @@ constexpr size_t kTxChunkBytes = 32 * 1024;
 constexpr bool kPanelMemoryRotated180 = Version::kPanelMemoryRotated180;
 constexpr Board::UiOrientation kDefaultUiOrientation =
     Version::kDefaultUiOrientation;
-constexpr Board::UiOrientation kRotatedUiOrientation = Version::kRotatedUiOrientation;
 }
 
 namespace WaveshareAmoled18::ImuWiring {

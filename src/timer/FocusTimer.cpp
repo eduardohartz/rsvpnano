@@ -2,7 +2,6 @@
 
 #include <math.h>
 
-#include "board/BoardConfig.h"
 #include "board/BoardImu.h"
 
 namespace {
@@ -175,12 +174,12 @@ FocusTimer::State FocusTimer::state() const { return state_; }
 
 FocusTimer::Genre FocusTimer::genre() const { return genre_; }
 
-Board::Config::UiOrientation FocusTimer::uiOrientation() const {
+Board::UiOrientation FocusTimer::uiOrientation() const {
   switch (state_) {
     case State::GenreSelect:
     case State::Unavailable:
     case State::Complete:
-      return Board::Config::UiOrientation::Landscape;
+      return Board::UiOrientation::Landscape;
 
     case State::WaitForTouchStart:
     case State::TouchRunning:
@@ -194,10 +193,10 @@ Board::Config::UiOrientation FocusTimer::uiOrientation() const {
 
     case State::BreakRunning:
     case State::WaitAfterWork:
-      return Board::Config::UiOrientation::Landscape;
+      return Board::UiOrientation::Landscape;
 
     default:
-      return Board::Config::UiOrientation::Portrait;
+      return Board::UiOrientation::Portrait;
   }
 }
 
@@ -541,8 +540,7 @@ FocusTimer::OrientationState FocusTimer::oppositeShortSide(
   }
 }
 
-Board::Config::UiOrientation FocusTimer::portraitOrientationForShortSide(
-    OrientationState orientation) {
-  return orientation == OrientationState::ShortSideB ? Board::Config::UiOrientation::PortraitFlipped
-                                                     : Board::Config::UiOrientation::Portrait;
+Board::UiOrientation FocusTimer::portraitOrientationForShortSide(OrientationState orientation) {
+  return orientation == OrientationState::ShortSideB ? Board::UiOrientation::PortraitFlipped
+                                                     : Board::UiOrientation::Portrait;
 }

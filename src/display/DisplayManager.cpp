@@ -105,51 +105,51 @@ int maxChunkPhysicalRows() {
 
 size_t txBufferPixels() { return static_cast<size_t>(kTxBufferWidth) * maxChunkPhysicalRows(); }
 
-int logicalWidthForOrientation(Board::Config::UiOrientation orientation) {
+int logicalWidthForOrientation(Board::UiOrientation orientation) {
   switch (orientation) {
-    case Board::Config::UiOrientation::Portrait:
-    case Board::Config::UiOrientation::PortraitFlipped:
+    case Board::UiOrientation::Portrait:
+    case Board::UiOrientation::PortraitFlipped:
       return kPanelNativeWidth;
-    case Board::Config::UiOrientation::Landscape:
-    case Board::Config::UiOrientation::LandscapeFlipped:
+    case Board::UiOrientation::Landscape:
+    case Board::UiOrientation::LandscapeFlipped:
     default:
       return kDisplayWidth;
   }
 }
 
-int logicalHeightForOrientation(Board::Config::UiOrientation orientation) {
+int logicalHeightForOrientation(Board::UiOrientation orientation) {
   switch (orientation) {
-    case Board::Config::UiOrientation::Portrait:
-    case Board::Config::UiOrientation::PortraitFlipped:
+    case Board::UiOrientation::Portrait:
+    case Board::UiOrientation::PortraitFlipped:
       return kPanelNativeHeight;
-    case Board::Config::UiOrientation::Landscape:
-    case Board::Config::UiOrientation::LandscapeFlipped:
+    case Board::UiOrientation::Landscape:
+    case Board::UiOrientation::LandscapeFlipped:
     default:
       return kDisplayHeight;
   }
 }
 
-bool isPortraitOrientation(Board::Config::UiOrientation orientation) {
-  return orientation == Board::Config::UiOrientation::Portrait ||
-         orientation == Board::Config::UiOrientation::PortraitFlipped;
+bool isPortraitOrientation(Board::UiOrientation orientation) {
+  return orientation == Board::UiOrientation::Portrait ||
+         orientation == Board::UiOrientation::PortraitFlipped;
 }
 
-void mapPhysicalToLogical(Board::Config::UiOrientation orientation, int physicalX, int physicalY,
+void mapPhysicalToLogical(Board::UiOrientation orientation, int physicalX, int physicalY,
                           int &logicalX, int &logicalY) {
   switch (orientation) {
-    case Board::Config::UiOrientation::Portrait:
+    case Board::UiOrientation::Portrait:
       logicalX = physicalX;
       logicalY = physicalY;
       break;
-    case Board::Config::UiOrientation::PortraitFlipped:
+    case Board::UiOrientation::PortraitFlipped:
       logicalX = kPanelNativeWidth - 1 - physicalX;
       logicalY = kPanelNativeHeight - 1 - physicalY;
       break;
-    case Board::Config::UiOrientation::Landscape:
+    case Board::UiOrientation::Landscape:
       logicalX = kDisplayWidth - 1 - physicalY;
       logicalY = physicalX;
       break;
-    case Board::Config::UiOrientation::LandscapeFlipped:
+    case Board::UiOrientation::LandscapeFlipped:
     default:
       logicalX = physicalY;
       logicalY = kDisplayHeight - 1 - physicalX;
@@ -856,6 +856,9 @@ int rsvpStartX70(const String &word, int focusIndex, int virtualWidth, bool clam
 
 static const char *kDisplayTag = "display";
 
+DisplayManager::DisplayManager()
+    : uiOrientation_(Board::Display::defaultUiOrientation()) {}
+
 DisplayManager::~DisplayManager() {
   if (virtualFrame_ != nullptr) {
     heap_caps_free(virtualFrame_);
@@ -920,7 +923,7 @@ void DisplayManager::setNightMode(bool nightMode) {
   lastRenderKey_ = "";
 }
 
-void DisplayManager::setUiOrientation(Board::Config::UiOrientation orientation) {
+void DisplayManager::setUiOrientation(Board::UiOrientation orientation) {
   if (uiOrientation_ == orientation) {
     return;
   }
@@ -931,8 +934,8 @@ void DisplayManager::setUiOrientation(Board::Config::UiOrientation orientation) 
 }
 
 void DisplayManager::setUiRotated180(bool rotated180) {
-  setUiOrientation(rotated180 ? Board::Config::ROTATED_UI_ORIENTATION
-                              : Board::Config::DEFAULT_UI_ORIENTATION);
+  setUiOrientation(rotated180 ? Board::Display::rotatedUiOrientation()
+                              : Board::Display::defaultUiOrientation());
 }
 
 void DisplayManager::setTypographyConfig(const TypographyConfig &config) {
@@ -1802,7 +1805,7 @@ void DisplayManager::flushFullWidthLogicalBand(int yStart, int yEnd) {
     return;
   }
 
-  const bool flipped = uiOrientation_ == Board::Config::UiOrientation::LandscapeFlipped;
+  const bool flipped = uiOrientation_ == Board::UiOrientation::LandscapeFlipped;
   const int physicalXStart = flipped ? (kDisplayHeight - yEnd) : yStart;
   const int physicalXEnd = flipped ? (kDisplayHeight - yStart) : yEnd;
   const int physicalWidth = physicalXEnd - physicalXStart;

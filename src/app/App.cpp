@@ -6491,7 +6491,7 @@ bool App::isFocusTimerMenuScreen(MenuScreen screen) const {
     return screen == MenuScreen::FocusTimerGenres || screen == MenuScreen::FocusTimerSession;
 }
 
-void App::applyUiOrientation(Board::Config::UiOrientation orientation) {
+void App::applyUiOrientation(Board::UiOrientation orientation) {
     Board::Imu::setUiOrientation(orientation);
     display_.setUiOrientation(orientation);
 }
@@ -6500,9 +6500,9 @@ void App::applyReaderUiOrientation() {
     applyUiOrientation(readerUiOrientation());
 }
 
-Board::Config::UiOrientation App::readerUiOrientation() const {
-    return handednessMode_ == HandednessMode::Right ? Board::Config::DEFAULT_UI_ORIENTATION
-                                                    : Board::Config::ROTATED_UI_ORIENTATION;
+Board::UiOrientation App::readerUiOrientation() const {
+    return handednessMode_ == HandednessMode::Right ? Board::Display::defaultUiOrientation()
+                                                    : Board::Display::rotatedUiOrientation();
 }
 
 String App::formatFocusTimerRemaining(uint32_t nowMs) const {
@@ -6534,9 +6534,9 @@ bool App::scrollModeEnabled() const {
 }
 
 bool App::uiRotated180() const {
-    const Board::Config::UiOrientation orientation = readerUiOrientation();
-    return orientation == Board::Config::UiOrientation::LandscapeFlipped ||
-           orientation == Board::Config::UiOrientation::PortraitFlipped;
+    const Board::UiOrientation orientation = readerUiOrientation();
+    return orientation == Board::UiOrientation::LandscapeFlipped ||
+           orientation == Board::UiOrientation::PortraitFlipped;
 }
 
 uint8_t App::effectiveAnchorPercent() const {

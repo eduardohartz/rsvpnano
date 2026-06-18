@@ -1,10 +1,6 @@
 #pragma once
 
-#include "board/BoardTypes.h"
-
 namespace Board::Config {
-
-using UiOrientation = Board::UiOrientation;
 
 constexpr const char *BOARD_ID = "waveshare_esp32s3_touch_amoled_2_41";
 constexpr const char *BOARD_LABEL = "Waveshare ESP32-S3-Touch-AMOLED-2.41";
@@ -25,11 +21,5 @@ constexpr int READER_CHROME_MARGIN_TOP = 8;
 constexpr int READER_CHROME_MARGIN_BOTTOM = 8;
 constexpr int READER_BATTERY_MARGIN_X = READER_CHROME_MARGIN_X;
 constexpr int READER_BATTERY_MARGIN_TOP = READER_CHROME_MARGIN_TOP;
-
-constexpr bool UI_ROTATED_180 = false;
-constexpr UiOrientation DEFAULT_UI_ORIENTATION =
-    UI_ROTATED_180 ? UiOrientation::LandscapeFlipped : UiOrientation::Landscape;
-constexpr UiOrientation ROTATED_UI_ORIENTATION =
-    UI_ROTATED_180 ? UiOrientation::Landscape : UiOrientation::LandscapeFlipped;
 
 }  // namespace Board::Config
