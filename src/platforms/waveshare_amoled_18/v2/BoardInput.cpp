@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 #include "drivers/gpio/tca9554/Tca9554.h"
-#include "drivers/touch/cst92xx/cst92xx.h"
+#include "drivers/touch/cst816/cst816.h"
 #include "platforms/waveshare_amoled_18/WaveshareAmoled18.h"
 
 namespace {
@@ -86,8 +86,8 @@ void cancel() {}
 
 bool beginTouch() {
   TwoWire &wire = touchWire();
-  return Cst92xxTouch::probe(wire, WaveshareAmoled18::TouchWiring::kAddress) &&
-         Cst92xxTouch::configureMonitorMode(wire, WaveshareAmoled18::TouchWiring::kAddress);
+  return Cst816Touch::probe(wire, WaveshareAmoled18::TouchWiring::kAddress) &&
+         Cst816Touch::configurePeriodicInterrupt(wire, WaveshareAmoled18::TouchWiring::kAddress);
 }
 
 bool touchReady() {
@@ -98,16 +98,17 @@ bool touchReady() {
 }
 
 bool readTouch(::Input::TouchContact &contact) {
-  std::array<uint8_t, Cst92xxTouch::kPacketLength> data = {};
-  if (!Cst92xxTouch::readPacket(touchWire(), WaveshareAmoled18::TouchWiring::kAddress,
-                                data.data(), data.size())) {
+  std::array<uint8_t, Cst816Touch::kPacketLength> data = {};
+  if (!Cst816Touch::readPacket(touchWire(), WaveshareAmoled18::TouchWiring::kAddress,
+                               WaveshareAmoled18::TouchWiring::kReleaseBusBeforeRead, data.data(),
+                               data.size())) {
     return false;
   }
 
   BoardDrivers::Touch::Sample decoded = {};
-  if (!Cst92xxTouch::decodePacket(data.data(), data.size(),
-                                  WaveshareAmoled18::DisplayWiring::kPanelWidth,
-                                  WaveshareAmoled18::DisplayWiring::kPanelHeight, decoded)) {
+  if (!Cst816Touch::decodePacket(data.data(), data.size(),
+                                 WaveshareAmoled18::DisplayWiring::kPanelWidth,
+                                 WaveshareAmoled18::DisplayWiring::kPanelHeight, decoded)) {
     return false;
   }
 
