@@ -15,8 +15,6 @@ void begin() {
 
 void prepareDeepSleepPowerHold() {}
 
-void resetWakePeripherals() {}
-
 bool enableAudioPowerIfAvailable() { return false; }
 
 bool readBatteryStatus(BatteryStatus &status) {
@@ -76,15 +74,5 @@ bool shouldRequestShutdownOnPowerOff() {
 bool shouldReleaseBatteryPowerBeforeDeepSleep() {
   return WaveshareC6TouchLcd147::Power::kReleaseBatteryHoldBeforeDeepSleep;
 }
-
-bool usesRecoverableSoftOff() { return WaveshareC6TouchLcd147::Power::kUsesRecoverableSoftOff; }
-
-bool softOffWakeUsesPowerButton() {
-  return WaveshareC6TouchLcd147::Power::kSoftOffWakeUsesPowerButton;
-}
-
-bool softOffWakeUsesBootButton() { return WaveshareC6TouchLcd147::Power::kSoftOffWakeUsesBootButton; }
-
-uint32_t softOffWakeConfirmMs() { return WaveshareC6TouchLcd147::Power::kSoftOffWakeConfirmMs; }
 
 }  // namespace Board::Power

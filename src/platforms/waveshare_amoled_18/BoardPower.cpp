@@ -77,8 +77,6 @@ void begin() {
 
 void prepareDeepSleepPowerHold() {}
 
-void resetWakePeripherals() { configureIoExpander(true); }
-
 bool enableAudioPowerIfAvailable() { return true; }
 
 bool readBatteryStatus(BatteryStatus &status) {
@@ -102,15 +100,5 @@ bool shouldRequestShutdownOnPowerOff() {
 bool shouldReleaseBatteryPowerBeforeDeepSleep() {
   return WaveshareAmoled18::Power::kReleaseBatteryHoldBeforeDeepSleep;
 }
-
-bool usesRecoverableSoftOff() { return WaveshareAmoled18::Power::kUsesRecoverableSoftOff; }
-
-bool softOffWakeUsesPowerButton() {
-  return WaveshareAmoled18::Power::kSoftOffWakeUsesPowerButton;
-}
-
-bool softOffWakeUsesBootButton() { return WaveshareAmoled18::Power::kSoftOffWakeUsesBootButton; }
-
-uint32_t softOffWakeConfirmMs() { return WaveshareAmoled18::Power::kSoftOffWakeConfirmMs; }
 
 }  // namespace Board::Power

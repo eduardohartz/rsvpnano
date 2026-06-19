@@ -76,8 +76,6 @@ void holdBacklightOffForDeepSleep() {
   Board::Display::holdBacklightOffForDeepSleep();
 }
 
-void resetWakePeripherals() { Board::Power::resetWakePeripherals(); }
-
 void deepSleepUntilConfiguredWake() {
   constexpr int wakePin = WaveshareLcd349::System::kDeepSleepWakePin;
   pinMode(wakePin, INPUT_PULLUP);
@@ -89,7 +87,7 @@ void deepSleepUntilConfiguredWake() {
   esp_deep_sleep_start();
 }
 
-const char *wakeLabel(bool, bool) {
+const char *wakeLabel(bool) {
   return "Hold PWR to start";
 }
 

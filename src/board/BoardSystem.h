@@ -7,9 +7,8 @@ namespace Board::System {
     void begin();
     void lightSleepUntilBootButton();
     void holdBacklightOffForDeepSleep();
-    void resetWakePeripherals();
     void deepSleepUntilConfiguredWake();
-    const char* wakeLabel(bool useRecoverableSoftOff, bool externalPowerPresent);
+    const char* wakeLabel(bool externalPowerPresent);
     void logStartupDiagnostics();
 
 } // namespace Board::System

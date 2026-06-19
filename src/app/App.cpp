@@ -22,9 +22,6 @@ constexpr uint32_t kBootSplashMs = 750;
 constexpr uint32_t kWpmFeedbackMs = 900;
 constexpr uint32_t kPowerOffHoldMs = 1600;
 constexpr uint32_t kPowerOffReleaseWaitMs = 4000;
-constexpr uint32_t kSoftOffReleaseWaitMs = 1200;
-constexpr uint32_t kSoftOffWakePollMs = 15;
-constexpr uint32_t kSoftOffArmQuietMs = 250;
 constexpr uint32_t kBatterySampleIntervalMs = 180000;
 constexpr uint32_t kTouchPlayHoldMs = 420;
 constexpr uint32_t kPreviewBrowseHoldMs = 240;
@@ -654,93 +651,6 @@ namespace {
 
     bool readLogicalPowerButtonHeld() {
         return Input::hasControl(Board::Input::currentControls(), Input::InputPower);
-    }
-
-    enum class SoftOffWakeSource : uint8_t {
-        None = 0,
-        Power,
-        Boot,
-        PowerAndBoot,
-    };
-
-    const char* softOffWakeSourceName(SoftOffWakeSource source) {
-        switch (source) {
-        case SoftOffWakeSource::Power:
-            return "power";
-        case SoftOffWakeSource::Boot:
-            return "boot";
-        case SoftOffWakeSource::PowerAndBoot:
-            return "power+boot";
-        case SoftOffWakeSource::None:
-        default:
-            return "none";
-        }
-    }
-
-    SoftOffWakeSource waitForRecoverableSoftOffWake(bool allowPowerWake, bool allowBootWake) {
-        Serial.println("[app] soft-off settling wake buttons");
-        uint32_t allReleasedSinceMs = 0;
-        while (true) {
-            const bool powerHeld = allowPowerWake && readLogicalPowerButtonHeld();
-            const bool bootHeld = allowBootWake && readLogicalPrimaryButtonHeld();
-            if ((!allowPowerWake || !powerHeld) && (!allowBootWake || !bootHeld)) {
-                if (allReleasedSinceMs == 0) {
-                    allReleasedSinceMs = millis();
-                }
-                if (millis() - allReleasedSinceMs >= kSoftOffArmQuietMs) {
-                    break;
-                }
-            } else {
-                allReleasedSinceMs = 0;
-            }
-            delay(kSoftOffWakePollMs);
-        }
-
-        if (allowPowerWake && allowBootWake) {
-            Serial.println("[app] soft-off armed; press PWR or BOOT to wake");
-        } else if (allowPowerWake) {
-            Serial.println("[app] soft-off armed; press PWR to wake");
-        } else {
-            Serial.println("[app] soft-off armed; press BOOT to wake");
-        }
-        bool candidatePowerHeld = false;
-        bool candidateBootHeld = false;
-        uint32_t candidateStartedMs = 0;
-        SoftOffWakeSource wakeSource = SoftOffWakeSource::None;
-
-        while (true) {
-            const bool powerHeld = allowPowerWake && readLogicalPowerButtonHeld();
-            const bool bootHeld = allowBootWake && readLogicalPrimaryButtonHeld();
-            if (powerHeld || bootHeld) {
-                if (powerHeld != candidatePowerHeld || bootHeld != candidateBootHeld) {
-                    candidatePowerHeld = powerHeld;
-                    candidateBootHeld = bootHeld;
-                    candidateStartedMs = millis();
-                } else if (millis() - candidateStartedMs >= Board::Power::softOffWakeConfirmMs()) {
-                    if (candidatePowerHeld && candidateBootHeld) {
-                        wakeSource = SoftOffWakeSource::PowerAndBoot;
-                    } else if (candidatePowerHeld) {
-                        wakeSource = SoftOffWakeSource::Power;
-                    } else {
-                        wakeSource = SoftOffWakeSource::Boot;
-                    }
-                    break;
-                }
-            } else {
-                candidatePowerHeld = false;
-                candidateBootHeld = false;
-                candidateStartedMs = 0;
-            }
-            delay(kSoftOffWakePollMs);
-        }
-
-        const uint32_t waitStartMs = millis();
-        while (((allowPowerWake && readLogicalPowerButtonHeld()) || (allowBootWake && readLogicalPrimaryButtonHeld()))
-               && millis() - waitStartMs < kSoftOffReleaseWaitMs) {
-            delay(10);
-        }
-
-        return wakeSource;
     }
 
 } // namespace
@@ -5338,19 +5248,14 @@ void App::enterPowerOff(uint32_t nowMs) {
     state_ = AppState::Sleeping;
 
     const bool pmuPowerOffOwnsWake = Board::Power::powerOffUsesControllerWake();
-    const bool useRecoverableSoftOff = Board::Power::usesRecoverableSoftOff();
-    const bool allowSoftOffPowerWake = Board::Power::softOffWakeUsesPowerButton();
-    const bool allowSoftOffBootWake = Board::Power::softOffWakeUsesBootButton();
     const bool externalPowerPresent = pmuPowerOffOwnsWake && Board::Power::externalPowerPresent();
-    const char* wakeLabel = Board::System::wakeLabel(useRecoverableSoftOff, externalPowerPresent);
+    const char* wakeLabel = Board::System::wakeLabel(externalPowerPresent);
     display_.renderStatus("OFF", "Release PWR", wakeLabel);
     delay(300);
 
     if (pmuPowerOffOwnsWake) {
         const uint32_t waitStartMs = millis();
-        const uint32_t releaseWaitMs = useRecoverableSoftOff ? kSoftOffReleaseWaitMs : kPowerOffReleaseWaitMs;
-        while (((allowSoftOffPowerWake || !useRecoverableSoftOff) && readLogicalPowerButtonHeld())
-               && millis() - waitStartMs < releaseWaitMs) {
+        while (readLogicalPowerButtonHeld() && millis() - waitStartMs < kPowerOffReleaseWaitMs) {
             delay(10);
         }
     }
@@ -5361,43 +5266,21 @@ void App::enterPowerOff(uint32_t nowMs) {
     storage_.end();
     Input::end();
     inputInitialized_ = false;
-    if (!useRecoverableSoftOff) {
-        Serial.flush();
-    }
+    Serial.flush();
 
     Board::System::holdBacklightOffForDeepSleep();
-    const bool requestPmuShutdown =
-        Board::Power::shouldRequestShutdownOnPowerOff() && !externalPowerPresent && !useRecoverableSoftOff;
+    const bool requestPmuShutdown = Board::Power::shouldRequestShutdownOnPowerOff() && !externalPowerPresent;
     if (requestPmuShutdown || Board::Power::shouldReleaseBatteryPowerBeforeDeepSleep()) {
         Board::Power::releaseBatteryPowerHold();
-    } else if (useRecoverableSoftOff) {
-        Serial.println("[app] recoverable soft-off; PMU shutdown skipped");
     } else if (pmuPowerOffOwnsWake && externalPowerPresent) {
-        Serial.println("[app] USB power present; using recoverable soft-off");
+        Serial.println("[app] USB power present; PMU shutdown skipped");
     }
 
-    if (pmuPowerOffOwnsWake || useRecoverableSoftOff) {
-        if (requestPmuShutdown) {
-            Serial.println("[app] waiting for PMU power cut");
-            Serial.flush();
-            delay(1500);
-            Serial.println("[app] PMU power cut not observed; using soft-off fallback");
-        }
-
-        // With USB attached the PMU may keep VSYS alive. Stay recoverable instead of leaving the
-        // reader black in an infinite loop that can only be fixed with reset/reflash.
-        Serial.println("[app] soft-off; arming wake buttons");
-        if (!useRecoverableSoftOff) {
-            Serial.flush();
-        }
-        const SoftOffWakeSource wakeSource = waitForRecoverableSoftOffWake(allowSoftOffPowerWake, allowSoftOffBootWake);
-        Serial.printf("[diag] soft_off_wake=%s\n", softOffWakeSourceName(wakeSource));
-        wakeFromSleep(true);
-        return;
-    }
-
-    if (Board::Power::shouldRequestShutdownOnPowerOff()) {
-        delay(60);
+    if (requestPmuShutdown) {
+        Serial.println("[app] waiting for PMU power cut");
+        Serial.flush();
+        delay(1500);
+        Serial.println("[app] PMU power cut not observed; entering deep sleep");
     }
 
     const uint32_t waitStartMs = millis();
@@ -5426,14 +5309,11 @@ void App::enterSleep(uint32_t nowMs) {
     wakeFromSleep();
 }
 
-void App::wakeFromSleep(bool fullPeripheralReset) {
+void App::wakeFromSleep() {
     const uint32_t nowMs = millis();
-    Serial.println(fullPeripheralReset ? "[app] woke from soft-off" : "[app] woke from light sleep");
+    Serial.println("[app] woke from light sleep");
 
     Board::System::begin();
-    if (fullPeripheralReset) {
-        Board::System::resetWakePeripherals();
-    }
     inputInitialized_ = Input::begin();
     powerOffStarted_ = false;
     updateBatteryStatus(nowMs, true);
@@ -5445,7 +5325,7 @@ void App::wakeFromSleep(bool fullPeripheralReset) {
     lastStateLogMs_ = nowMs;
     state_ = AppState::Paused;
 
-    const bool displayReady = fullPeripheralReset ? display_.begin() : display_.wakeFromSleep();
+    const bool displayReady = display_.wakeFromSleep();
     storageReady_ = storage_.begin();
 
     if (storageReady_ && usingStorageBook_ && !currentBookPath_.isEmpty()) {

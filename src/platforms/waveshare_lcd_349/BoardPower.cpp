@@ -38,8 +38,6 @@ void begin() {
 
 void prepareDeepSleepPowerHold() {}
 
-void resetWakePeripherals() {}
-
 bool enableAudioPowerIfAvailable() {
   return BoardDrivers::Tca9554::configureOutputPin(
       Wire1, WaveshareLcd349::Tca9554Wiring::kAddress,
@@ -131,15 +129,5 @@ bool shouldRequestShutdownOnPowerOff() {
 bool shouldReleaseBatteryPowerBeforeDeepSleep() {
   return WaveshareLcd349::Power::kReleaseBatteryHoldBeforeDeepSleep;
 }
-
-bool usesRecoverableSoftOff() { return WaveshareLcd349::Power::kUsesRecoverableSoftOff; }
-
-bool softOffWakeUsesPowerButton() {
-  return WaveshareLcd349::Power::kSoftOffWakeUsesPowerButton;
-}
-
-bool softOffWakeUsesBootButton() { return WaveshareLcd349::Power::kSoftOffWakeUsesBootButton; }
-
-uint32_t softOffWakeConfirmMs() { return WaveshareLcd349::Power::kSoftOffWakeConfirmMs; }
 
 }  // namespace Board::Power

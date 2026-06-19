@@ -66,8 +66,6 @@ void holdBacklightOffForDeepSleep() {
   Board::Display::holdBacklightOffForDeepSleep();
 }
 
-void resetWakePeripherals() { Board::Power::resetWakePeripherals(); }
-
 void deepSleepUntilConfiguredWake() {
   constexpr int wakePin = WaveshareAmoled18::System::kDeepSleepWakePin;
   pinMode(wakePin, INPUT_PULLUP);
@@ -79,10 +77,7 @@ void deepSleepUntilConfiguredWake() {
   esp_deep_sleep_start();
 }
 
-const char *wakeLabel(bool useRecoverableSoftOff, bool externalPowerPresent) {
-  if (useRecoverableSoftOff) {
-    return "Press PWR to wake";
-  }
+const char *wakeLabel(bool externalPowerPresent) {
   return externalPowerPresent ? "Press PWR to wake" : "Press PWR to start";
 }
 

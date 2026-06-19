@@ -41,10 +41,6 @@ constexpr int kBatteryHoldPin = 16;
 constexpr gpio_num_t kBatteryHoldGpio = GPIO_NUM_16;
 constexpr bool kRequestPmuShutdownOnPowerOff = false;
 constexpr bool kReleaseBatteryHoldBeforeDeepSleep = false;
-constexpr bool kUsesRecoverableSoftOff = false;
-constexpr bool kSoftOffWakeUsesPowerButton = false;
-constexpr bool kSoftOffWakeUsesBootButton = false;
-constexpr uint32_t kSoftOffWakeConfirmMs = 90;
 }
 
 namespace WaveshareAmoled241::Storage {

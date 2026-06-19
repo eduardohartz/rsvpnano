@@ -114,8 +114,6 @@ void holdBacklightOffForDeepSleep() {
   Board::Display::holdBacklightOffForDeepSleep();
 }
 
-void resetWakePeripherals() { Board::Power::resetWakePeripherals(); }
-
 void deepSleepUntilConfiguredWake() {
   constexpr int wakePin = WaveshareC6TouchLcd147::System::kDeepSleepWakePin;
   pinMode(wakePin, INPUT_PULLUP);
@@ -128,7 +126,7 @@ void deepSleepUntilConfiguredWake() {
   esp_deep_sleep_start();
 }
 
-const char *wakeLabel(bool, bool) { return "Press BOOT to start"; }
+const char *wakeLabel(bool) { return "Press BOOT to start"; }
 
 void logStartupDiagnostics() {
   const esp_reset_reason_t resetReason = esp_reset_reason();

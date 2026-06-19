@@ -58,10 +58,6 @@ constexpr bool kReleaseBusBeforeRead = true;
 namespace WaveshareAmoled206::Power {
 constexpr bool kRequestPmuShutdownOnPowerOff = true;
 constexpr bool kReleaseBatteryHoldBeforeDeepSleep = false;
-constexpr bool kUsesRecoverableSoftOff = true;
-constexpr bool kSoftOffWakeUsesPowerButton = true;
-constexpr bool kSoftOffWakeUsesBootButton = true;
-constexpr uint32_t kSoftOffWakeConfirmMs = 90;
 }
 
 namespace WaveshareAmoled206::Storage {

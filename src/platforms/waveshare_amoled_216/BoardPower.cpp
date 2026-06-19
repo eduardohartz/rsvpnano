@@ -21,8 +21,6 @@ void begin() { BoardDrivers::Axp2101::begin(kAxp2101Config); }
 
 void prepareDeepSleepPowerHold() {}
 
-void resetWakePeripherals() {}
-
 bool enableAudioPowerIfAvailable() { return true; }
 
 bool readBatteryStatus(BatteryStatus &status) {
@@ -48,15 +46,5 @@ bool shouldRequestShutdownOnPowerOff() {
 bool shouldReleaseBatteryPowerBeforeDeepSleep() {
   return WaveshareAmoled216::Power::kReleaseBatteryHoldBeforeDeepSleep;
 }
-
-bool usesRecoverableSoftOff() { return WaveshareAmoled216::Power::kUsesRecoverableSoftOff; }
-
-bool softOffWakeUsesPowerButton() {
-  return WaveshareAmoled216::Power::kSoftOffWakeUsesPowerButton;
-}
-
-bool softOffWakeUsesBootButton() { return WaveshareAmoled216::Power::kSoftOffWakeUsesBootButton; }
-
-uint32_t softOffWakeConfirmMs() { return WaveshareAmoled216::Power::kSoftOffWakeConfirmMs; }
 
 }  // namespace Board::Power

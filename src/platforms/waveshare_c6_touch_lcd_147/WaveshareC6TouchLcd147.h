@@ -40,10 +40,6 @@ constexpr int kBatteryAdcPin = 0;
 constexpr float kBatteryDividerScale = 0.003f;
 constexpr bool kRequestPmuShutdownOnPowerOff = false;
 constexpr bool kReleaseBatteryHoldBeforeDeepSleep = false;
-constexpr bool kUsesRecoverableSoftOff = false;
-constexpr bool kSoftOffWakeUsesPowerButton = false;
-constexpr bool kSoftOffWakeUsesBootButton = false;
-constexpr uint32_t kSoftOffWakeConfirmMs = 90;
 }
 
 namespace WaveshareC6TouchLcd147::Storage {

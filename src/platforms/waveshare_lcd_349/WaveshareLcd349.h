@@ -55,10 +55,6 @@ namespace WaveshareLcd349::Power {
 constexpr int kBatteryAdcPin = 4;
 constexpr bool kRequestPmuShutdownOnPowerOff = false;
 constexpr bool kReleaseBatteryHoldBeforeDeepSleep = true;
-constexpr bool kUsesRecoverableSoftOff = false;
-constexpr bool kSoftOffWakeUsesPowerButton = false;
-constexpr bool kSoftOffWakeUsesBootButton = false;
-constexpr uint32_t kSoftOffWakeConfirmMs = 90;
 }
 
 namespace WaveshareLcd349::Storage {

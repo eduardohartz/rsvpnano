@@ -11,7 +11,6 @@ namespace Board::Power {
 
     void begin();
     void prepareDeepSleepPowerHold();
-    void resetWakePeripherals();
     bool enableAudioPowerIfAvailable();
     bool readBatteryStatus(BatteryStatus& status);
     DiagnosticSnapshot diagnosticSnapshot();
@@ -21,9 +20,5 @@ namespace Board::Power {
     bool powerOffUsesControllerWake();
     bool shouldRequestShutdownOnPowerOff();
     bool shouldReleaseBatteryPowerBeforeDeepSleep();
-    bool usesRecoverableSoftOff();
-    bool softOffWakeUsesPowerButton();
-    bool softOffWakeUsesBootButton();
-    uint32_t softOffWakeConfirmMs();
 
 } // namespace Board::Power

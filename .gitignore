@@ -33,5 +33,6 @@ web/generated/
 .cache/
 .tmp/
 compile_commands.json
+src/idf_component.yml
 benchmark/logs/
 benchmark/summary.md

@@ -48,8 +48,6 @@ void prepareDeepSleepPowerHold() {
   gpio_deep_sleep_hold_en();
 }
 
-void resetWakePeripherals() {}
-
 bool enableAudioPowerIfAvailable() { return false; }
 
 bool readBatteryStatus(BatteryStatus &status) {
@@ -119,15 +117,5 @@ bool shouldRequestShutdownOnPowerOff() {
 bool shouldReleaseBatteryPowerBeforeDeepSleep() {
   return WaveshareAmoled241::Power::kReleaseBatteryHoldBeforeDeepSleep;
 }
-
-bool usesRecoverableSoftOff() { return WaveshareAmoled241::Power::kUsesRecoverableSoftOff; }
-
-bool softOffWakeUsesPowerButton() {
-  return WaveshareAmoled241::Power::kSoftOffWakeUsesPowerButton;
-}
-
-bool softOffWakeUsesBootButton() { return WaveshareAmoled241::Power::kSoftOffWakeUsesBootButton; }
-
-uint32_t softOffWakeConfirmMs() { return WaveshareAmoled241::Power::kSoftOffWakeConfirmMs; }
 
 }  // namespace Board::Power

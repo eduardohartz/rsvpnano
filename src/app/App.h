@@ -329,7 +329,7 @@ private:
     void updateStandbyScreensaver(uint32_t nowMs, bool force = false);
     void enterPowerOff(uint32_t nowMs);
     void enterSleep(uint32_t nowMs);
-    void wakeFromSleep(bool fullPeripheralReset = false);
+    void wakeFromSleep();
     bool restoreSavedBook(uint32_t nowMs);
     bool prepareBootBookLoad();
     void loadPendingBootBook(uint32_t nowMs);
