@@ -8,10 +8,15 @@
 #endif
 
 #if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
-#include <USBMSC.h>
+#define RSVP_USB_MSC_ENABLED 1
+#else
+#define RSVP_USB_MSC_ENABLED 0
 #endif
 
+#if RSVP_USB_MSC_ENABLED
+#include <USBMSC.h>
 #include <driver/sdmmc_types.h>
+#endif
 
 class UsbMassStorageManager {
  public:
@@ -39,11 +44,11 @@ class UsbMassStorageManager {
 
   static UsbMassStorageManager *instance_;
 
-#if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
+#if RSVP_USB_MSC_ENABLED
   USBMSC msc_;
+  sdmmc_card_t card_ = {};
 #endif
 
-  sdmmc_card_t card_ = {};
   uint8_t *sectorBuffer_ = nullptr;
   uint32_t blockCount_ = 0;
   uint16_t blockSize_ = 512;

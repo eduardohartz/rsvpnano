@@ -3,17 +3,20 @@
 #include <algorithm>
 #include <cstring>
 
+#if RSVP_USB_MSC_ENABLED
 #include <esp_err.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <sdmmc_cmd.h>
 #include <tusb.h>
 #include <driver/sdmmc_host.h>
+#endif
 
 #include "board/BoardStorage.h"
 
 namespace {
 
+#if RSVP_USB_MSC_ENABLED
 constexpr uint16_t kUsbBlockSize = 512;
 constexpr int kSdFrequenciesKhz[] = {
     SDMMC_FREQ_DEFAULT,
@@ -31,7 +34,6 @@ void deinitHostIfNeeded() {
 }
 
 void pulseUsbReconnect() {
-#if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
   if (!tud_inited()) {
     return;
   }
@@ -39,8 +41,8 @@ void pulseUsbReconnect() {
   tud_disconnect();
   delay(120);
   tud_connect();
-#endif
 }
+#endif
 
 }  // namespace
 
@@ -52,7 +54,7 @@ UsbMassStorageManager::UsbMassStorageManager() {
 }
 
 bool UsbMassStorageManager::begin(bool writeEnabled) {
-#if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
+#if RSVP_USB_MSC_ENABLED
   if (active_) {
     return true;
   }
@@ -89,7 +91,7 @@ bool UsbMassStorageManager::begin(bool writeEnabled) {
 }
 
 void UsbMassStorageManager::end() {
-#if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
+#if RSVP_USB_MSC_ENABLED
   msc_.mediaPresent(false);
   msc_.end();
 #endif
@@ -113,7 +115,7 @@ uint64_t UsbMassStorageManager::cardSizeBytes() const {
 const char *UsbMassStorageManager::statusMessage() const { return statusMessage_; }
 
 bool UsbMassStorageManager::configureMsc() {
-#if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
+#if RSVP_USB_MSC_ENABLED
   msc_.vendorID("RSVPNANO");
   msc_.productID("SD Transfer");
   msc_.productRevision("0.1");
@@ -128,6 +130,7 @@ bool UsbMassStorageManager::configureMsc() {
 }
 
 bool UsbMassStorageManager::beginSdCard() {
+#if RSVP_USB_MSC_ENABLED
   blockCount_ = 0;
   blockSize_ = kUsbBlockSize;
   cardReady_ = false;
@@ -191,19 +194,26 @@ bool UsbMassStorageManager::beginSdCard() {
   }
 
   return false;
+#else
+  return false;
+#endif
 }
 
 void UsbMassStorageManager::endSdCard() {
+#if RSVP_USB_MSC_ENABLED
   if (cardReady_) {
     deinitHostIfNeeded();
   }
+#endif
   cardReady_ = false;
   blockCount_ = 0;
 
+#if RSVP_USB_MSC_ENABLED
   if (sectorBuffer_ != nullptr) {
     heap_caps_free(sectorBuffer_);
     sectorBuffer_ = nullptr;
   }
+#endif
 }
 
 int32_t UsbMassStorageManager::onRead(uint32_t lba, uint32_t offset, void *buffer,
@@ -231,6 +241,7 @@ bool UsbMassStorageManager::onStartStop(uint8_t powerCondition, bool start, bool
 
 int32_t UsbMassStorageManager::readSectors(uint32_t lba, uint32_t offset, void *buffer,
                                            uint32_t bufsize) {
+#if RSVP_USB_MSC_ENABLED
   if (!active_ || !cardReady_ || buffer == nullptr || sectorBuffer_ == nullptr ||
       offset >= blockSize_) {
     return -1;
@@ -258,10 +269,18 @@ int32_t UsbMassStorageManager::readSectors(uint32_t lba, uint32_t offset, void *
   }
 
   return static_cast<int32_t>(copied);
+#else
+  (void)lba;
+  (void)offset;
+  (void)buffer;
+  (void)bufsize;
+  return -1;
+#endif
 }
 
 int32_t UsbMassStorageManager::writeSectors(uint32_t lba, uint32_t offset, uint8_t *buffer,
                                             uint32_t bufsize) {
+#if RSVP_USB_MSC_ENABLED
   if (!writeEnabled_) {
     return -1;
   }
@@ -301,6 +320,13 @@ int32_t UsbMassStorageManager::writeSectors(uint32_t lba, uint32_t offset, uint8
   }
 
   return static_cast<int32_t>(written);
+#else
+  (void)lba;
+  (void)offset;
+  (void)buffer;
+  (void)bufsize;
+  return -1;
+#endif
 }
 
 bool UsbMassStorageManager::handleStartStop(uint8_t powerCondition, bool start, bool loadEject) {
@@ -310,7 +336,7 @@ bool UsbMassStorageManager::handleStartStop(uint8_t powerCondition, bool start, 
   if (loadEject && !start) {
     ejected_ = true;
     statusMessage_ = "Ejected";
-#if RSVP_USB_TRANSFER_ENABLED && CONFIG_TINYUSB_MSC_ENABLED && !ARDUINO_USB_MODE
+#if RSVP_USB_MSC_ENABLED
     msc_.mediaPresent(false);
 #endif
   }

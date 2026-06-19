@@ -28,6 +28,4 @@ bool supportsFrequencySelection() { return false; }
 
 bool setSdMmcPins() { return true; }
 
-void configureSdMmcSlot(sdmmc_slot_config_t &slotConfig) { (void)slotConfig; }
-
 }  // namespace Board::Storage

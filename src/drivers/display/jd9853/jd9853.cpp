@@ -140,8 +140,8 @@ void init(Context &context) {
 
   if (context.config.backlightPin >= 0) {
     pinMode(context.config.backlightPin, OUTPUT);
-    analogWriteResolution(8);
-    analogWriteFrequency(20000);
+    analogWriteResolution(context.config.backlightPin, 8);
+    analogWriteFrequency(context.config.backlightPin, 20000);
     analogWrite(context.config.backlightPin, 0);
   }
 

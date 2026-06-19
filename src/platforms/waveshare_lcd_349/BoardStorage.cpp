@@ -26,6 +26,7 @@ bool setSdMmcPins() {
                         WaveshareLcd349::Storage::kSdData0Pin);
 }
 
+#if RSVP_USB_TRANSFER_ENABLED
 void configureSdMmcSlot(sdmmc_slot_config_t &slotConfig) {
 #ifdef SOC_SDMMC_USE_GPIO_MATRIX
   slotConfig.clk = WaveshareLcd349::Storage::kSdClockPin;
@@ -38,5 +39,6 @@ void configureSdMmcSlot(sdmmc_slot_config_t &slotConfig) {
   (void)slotConfig;
 #endif
 }
+#endif
 
 }  // namespace Board::Storage

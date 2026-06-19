@@ -3,7 +3,13 @@
 #include "board/BoardStorage.h"
 #include <algorithm>
 #include <array>
+#if __has_include(<miniz.h>)
+#include <miniz.h>
+#elif __has_include(<esp_rom/miniz.h>)
+#include <esp_rom/miniz.h>
+#else
 #include <esp32s3/rom/miniz.h>
+#endif
 #include <esp_heap_caps.h>
 
 #include "converter/EpubContentWriter.h"
