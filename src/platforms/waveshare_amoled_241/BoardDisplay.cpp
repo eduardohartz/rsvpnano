@@ -28,16 +28,7 @@ Rm690b0::Context gDisplayContext = {
     },
 };
 
-}  // namespace
-
-namespace Board::Display {
-
-bool begin() {
-  Rm690b0::init(gDisplayContext);
-  return true;
-}
-
-void enablePowerIfAvailable() {
+void enableDisplayRail() {
   if (!BoardDrivers::Tca9554::configureOutputPin(
           Wire1, WaveshareAmoled241::Tca9554Wiring::kDisplayRailAddress,
           WaveshareAmoled241::Tca9554Wiring::kDisplayRailEnablePin, true,
@@ -47,6 +38,16 @@ void enablePowerIfAvailable() {
   }
 
   delay(25);
+}
+
+}  // namespace
+
+namespace Board::Display {
+
+bool begin() {
+  enableDisplayRail();
+  Rm690b0::init(gDisplayContext);
+  return true;
 }
 
 void holdBacklightOffForDeepSleep() {}

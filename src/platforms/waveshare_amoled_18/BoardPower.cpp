@@ -8,12 +8,6 @@
 
 namespace {
 
-struct PowerContext {
-  bool tca9554Sequenced = false;
-};
-
-PowerContext gPower;
-
 constexpr BoardDrivers::Axp2101::Config kAxp2101Config = {
     WaveshareAmoled18::Axp2101Wiring::kReleaseBusBeforeRead,
     WaveshareAmoled18::Axp2101Wiring::kEnablePowerKeyIrqs,
@@ -22,7 +16,7 @@ constexpr BoardDrivers::Axp2101::Config kAxp2101Config = {
     WaveshareAmoled18::Axp2101Wiring::kPowerKeyOffTimeValue,
 };
 
-void configureIoExpander(bool forceDisplaySequence = false) {
+void configureIoExpander() {
   BoardDrivers::Tca9554::PortState state = {};
   if (!BoardDrivers::Tca9554::readPortState(
           Wire1, WaveshareAmoled18::Tca9554Wiring::kAddress, state,
@@ -31,14 +25,7 @@ void configureIoExpander(bool forceDisplaySequence = false) {
     return;
   }
 
-  constexpr uint8_t displayMask = WaveshareAmoled18::Tca9554Wiring::kDisplayMask;
-  const bool runDisplaySequence = forceDisplaySequence || !gPower.tca9554Sequenced;
-
-  if (runDisplaySequence) {
-    state.output &= WaveshareAmoled18::Tca9554Wiring::kDisplayClearMask;
-  } else {
-    state.output |= displayMask;
-  }
+  state.output &= WaveshareAmoled18::Tca9554Wiring::kDisplayClearMask;
   state.output |= WaveshareAmoled18::Tca9554Wiring::kSdEnableMask;
   state.config &= WaveshareAmoled18::Tca9554Wiring::kOutputClearMask;
   state.config |= WaveshareAmoled18::Tca9554Wiring::kInputMask;
@@ -48,22 +35,6 @@ void configureIoExpander(bool forceDisplaySequence = false) {
     Serial.println("[board] TCA9554 output setup failed");
     return;
   }
-  if (!runDisplaySequence) {
-    return;
-  }
-
-  if (forceDisplaySequence) {
-    Serial.println("[board] TCA9554 display/touch wake sequence");
-  }
-  delay(20);
-  state.output |= displayMask;
-  if (!BoardDrivers::Tca9554::writeOutput(Wire1, WaveshareAmoled18::Tca9554Wiring::kAddress,
-                                          state.output)) {
-    Serial.println("[board] TCA9554 display release failed");
-    return;
-  }
-  delay(50);
-  gPower.tca9554Sequenced = true;
 }
 
 }  // namespace

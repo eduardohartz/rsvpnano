@@ -53,7 +53,6 @@ void begin() {
             WaveshareLcd349::System::kSystemI2cTimeoutMs);
 
   Board::Power::begin();
-  Board::Display::enablePowerIfAvailable();
 }
 
 void lightSleepUntilBootButton() {

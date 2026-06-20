@@ -31,14 +31,7 @@ namespace {
 
 namespace Board::Display {
 
-    bool begin() {
-        Axs15231b::init(gDisplayContext);
-        return true;
-    }
-
-    void enablePowerIfAvailable() {
-
-
+    void enableBacklightPower() {
         if (!BoardDrivers::Tca9554::configureOutputPin(Wire1, WaveshareLcd349::Tca9554Wiring::kAddress,
                                                        WaveshareLcd349::Tca9554Wiring::kBacklightEnablePin, true,
                                                        WaveshareLcd349::Tca9554Wiring::kReleaseBusBeforeRead)) {
@@ -47,6 +40,12 @@ namespace Board::Display {
         }
 
         Serial.println("[board] Backlight enable configured");
+    }
+
+    bool begin() {
+        Axs15231b::init(gDisplayContext);
+        enableBacklightPower();
+        return true;
     }
 
     void holdBacklightOffForDeepSleep() {

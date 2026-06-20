@@ -1,6 +1,7 @@
 #include "board/BoardDisplay.h"
 
 #include "drivers/display/sh8601/sh8601.h"
+#include "platforms/waveshare_amoled_18/BoardDisplayPower.h"
 #include "platforms/waveshare_amoled_18/WaveshareAmoled18.h"
 
 namespace {
@@ -27,11 +28,10 @@ Sh8601::Context gDisplayContext = {
 namespace Board::Display {
 
 bool begin() {
+  WaveshareAmoled18::DisplayPower::releaseHardware();
   Sh8601::init(gDisplayContext);
   return true;
 }
-
-void enablePowerIfAvailable() {}
 
 void holdBacklightOffForDeepSleep() {}
 

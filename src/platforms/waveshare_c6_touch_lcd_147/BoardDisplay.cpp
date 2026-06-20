@@ -31,8 +31,6 @@ bool begin() {
   return true;
 }
 
-void enablePowerIfAvailable() {}
-
 void holdBacklightOffForDeepSleep() { setBacklight(false); }
 
 Board::UiOrientation defaultUiOrientation() {

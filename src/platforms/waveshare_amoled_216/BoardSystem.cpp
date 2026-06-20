@@ -43,7 +43,6 @@ void begin() {
             WaveshareAmoled216::System::kTouchI2cTimeoutMs);
 
   Board::Power::begin();
-  Board::Display::enablePowerIfAvailable();
 }
 
 void lightSleepUntilBootButton() {

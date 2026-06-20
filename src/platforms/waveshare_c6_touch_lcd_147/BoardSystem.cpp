@@ -91,7 +91,6 @@ void begin() {
             WaveshareC6TouchLcd147::System::kSystemI2cTimeoutMs);
 
   Board::Power::begin();
-  Board::Display::enablePowerIfAvailable();
 }
 
 void lightSleepUntilBootButton() {

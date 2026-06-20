@@ -1,6 +1,7 @@
 #include "board/BoardDisplay.h"
 
 #include "drivers/display/co5300/co5300.h"
+#include "platforms/waveshare_amoled_18/BoardDisplayPower.h"
 #include "platforms/waveshare_amoled_18/WaveshareAmoled18.h"
 
 namespace {
@@ -27,11 +28,10 @@ Co5300::Context gDisplayContext = {
 namespace Board::Display {
 
 bool begin() {
+  WaveshareAmoled18::DisplayPower::releaseHardware();
   Co5300::init(gDisplayContext);
   return true;
 }
-
-void enablePowerIfAvailable() {}
 
 void holdBacklightOffForDeepSleep() {}
 

@@ -7,7 +7,6 @@
 namespace Board::Display {
 
     bool begin();
-    void enablePowerIfAvailable();
     void holdBacklightOffForDeepSleep();
     Board::UiOrientation defaultUiOrientation();
     Board::UiOrientation rotatedUiOrientation();
