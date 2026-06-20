@@ -32,7 +32,6 @@ constexpr LcdCommand kQspiInit[] = {
     {0x53, {0x20}, 1, 10},
     {0x2A, {0x00, 0x00, 0x01, 0x6F}, 4, 0},
     {0x2B, {0x00, 0x00, 0x01, 0xBF}, 4, 0},
-    {0x29, {0x00}, 0, 10},
 };
 
 size_t sendBufferPixels(const Sh8601::Context &context) {
@@ -137,7 +136,7 @@ void init(Context &context) {
     }
   }
 
-  context.displayOn = true;
+  context.displayOn = false;
   applyBrightness(context);
   ESP_LOGI(kSh8601Tag, "SH8601 QSPI init complete");
 }

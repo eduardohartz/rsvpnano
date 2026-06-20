@@ -34,7 +34,6 @@ constexpr LcdCommand kQspiInit[] = {
     {0x3A, {0x55}, 1, 0},
     {0x80, {0x00}, 1, 0},
     {0x11, {0x00}, 0, 120},
-    {0x29, {0x00}, 0, 10},
 };
 
 uint8_t defaultMadctl(const Rm690b0::Context &context) {
@@ -146,7 +145,7 @@ void init(Context &context) {
     }
   }
 
-  context.displayOn = true;
+  context.displayOn = false;
   applyBrightness(context);
   ESP_LOGI(kRm690b0Tag, "RM690B0 QSPI init complete");
 }

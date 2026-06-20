@@ -34,7 +34,6 @@ constexpr LcdCommand kQspiInit[] = {
     {0x2A, {0x00, 0x00, 0x01, 0xDF}, 4, 0},
     {0x2B, {0x00, 0x00, 0x01, 0xDF}, 4, 0},
     {0x36, {0x00}, 1, 0},
-    {0x29, {0x00}, 0, 10},
 };
 
 uint8_t defaultMadctl(const Co5300::Context &context) {
@@ -151,7 +150,7 @@ void init(Context &context) {
     }
   }
 
-  context.displayOn = true;
+  context.displayOn = false;
   applyBrightness(context);
   ESP_LOGI(kCo5300Tag, "CO5300 QSPI init complete");
 }

@@ -66,7 +66,7 @@ constexpr LcdCommand kInitCommands[] = {
     {0x2A, kCmd2A, sizeof(kCmd2A), 0}, {0x2B, kCmd2B, sizeof(kCmd2B), 0},
     {0xDE, kCmdDe2, sizeof(kCmdDe2), 0}, {0xE5, kCmdE5A, sizeof(kCmdE5A), 0},
     {0xDE, kCmdDe0, sizeof(kCmdDe0), 0}, {0x36, kCmd36, sizeof(kCmd36), 0},
-    {0x21, nullptr, 0, 0}, {0x29, nullptr, 0, 0},
+    {0x21, nullptr, 0, 0},
 };
 
 size_t chunkPixels(const Jd9853::Context &context) {
@@ -170,7 +170,7 @@ void init(Context &context) {
     }
   }
 
-  context.displayOn = true;
+  context.displayOn = false;
   applyBacklight(context);
   ESP_LOGI(kJd9853Tag, "JD9853 SPI init complete");
 }
