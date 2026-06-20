@@ -9,6 +9,8 @@ constexpr const char *kBoardLabel = "Waveshare ESP32-S3-Touch-AMOLED-1.8 V1";
 constexpr const char *kOtaAssetName = "rsvp-nano-esp32-s3-touch-amoled-1.8-ota.bin";
 
 constexpr bool kPanelMemoryRotated180 = true;
+constexpr uint16_t kPanelColumnOffset = 0;
+constexpr uint16_t kPanelRowOffset = 0;
 constexpr Board::UiOrientation kDefaultUiOrientation = Board::UiOrientation::Landscape;
 
 constexpr int kTouchIrqPin = -1;

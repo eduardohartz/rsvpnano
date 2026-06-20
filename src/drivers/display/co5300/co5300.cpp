@@ -31,8 +31,6 @@ constexpr LcdCommand kQspiInit[] = {
     {0x53, {0x20}, 1, 0},
     {0x51, {0xFF}, 1, 0},
     {0x63, {0xFF}, 1, 0},
-    {0x2A, {0x00, 0x00, 0x01, 0xDF}, 4, 0},
-    {0x2B, {0x00, 0x00, 0x01, 0xDF}, 4, 0},
     {0x36, {0x00}, 1, 0},
 };
 
@@ -104,6 +102,11 @@ void applyBrightness(Co5300::Context &context) {
 namespace Co5300 {
 
 void init(Context &context) {
+  if (context.config.panelWidth == 0 || context.config.panelHeight == 0) {
+    ESP_LOGE(kCo5300Tag, "Invalid CO5300 panel geometry");
+    return;
+  }
+
   if (context.config.resetPin >= 0) {
     pinMode(context.config.resetPin, OUTPUT);
     digitalWrite(context.config.resetPin, HIGH);
@@ -149,6 +152,9 @@ void init(Context &context) {
       delay(command.delayMs);
     }
   }
+
+  setColumnWindow(context, 0, static_cast<uint16_t>(context.config.panelWidth - 1));
+  setRowWindow(context, 0, static_cast<uint16_t>(context.config.panelHeight - 1));
 
   context.displayOn = false;
   applyBrightness(context);

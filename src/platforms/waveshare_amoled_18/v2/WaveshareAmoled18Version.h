@@ -12,6 +12,8 @@ constexpr const char *kOtaAssetName = "rsvp-nano-esp32-s3-touch-amoled-1.8-v2-ot
 // orientation. Keep hardware panel memory unrotated and make the UI orientation
 // the board-version fact instead of adding shared App/Input conditionals.
 constexpr bool kPanelMemoryRotated180 = false;
+constexpr uint16_t kPanelColumnOffset = 16;
+constexpr uint16_t kPanelRowOffset = 0;
 constexpr Board::UiOrientation kDefaultUiOrientation = Board::UiOrientation::LandscapeFlipped;
 
 // Waveshare's v2 samples route TP_INT to GPIO21, but the app polls touch to avoid

@@ -20,6 +20,8 @@ Co5300::Context gDisplayContext = {
         WaveshareAmoled18::DisplayWiring::kPanelHeight,
         WaveshareAmoled18::DisplayWiring::kTxChunkBytes,
         WaveshareAmoled18::DisplayWiring::kPanelMemoryRotated180,
+        WaveshareAmoled18::DisplayWiring::kPanelColumnOffset,
+        WaveshareAmoled18::DisplayWiring::kPanelRowOffset,
     },
 };
 

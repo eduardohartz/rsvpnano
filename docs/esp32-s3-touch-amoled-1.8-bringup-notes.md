@@ -20,6 +20,7 @@
 - v1 display: `SH8601`
 - v2 display: `CO5300`
 - Native panel geometry: `368x448`
+- v2 CO5300 column offset: `16px`, matching Waveshare's Arduino CO5300 constructor.
 - App/UI geometry: `448x368` landscape
 - v1 touch: `FT3168` routed through the FT6336-compatible driver at I2C `0x38`
 - v2 touch: CST92xx-compatible touch at I2C `0x15`
