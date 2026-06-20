@@ -658,7 +658,6 @@ namespace {
 App::App() = default;
 
 void App::begin() {
-    Board::System::begin();
     inputInitialized_ = Input::begin();
     storage_.setStatusCallback(&App::handleStorageStatus, this);
     preferences_.begin(kPrefsNamespace, false);
@@ -4809,8 +4808,8 @@ void App::exitUsbTransfer(uint32_t nowMs) {
 }
 
 void App::enterStandby(uint32_t nowMs) {
-    if (state_ == AppState::UsbTransfer || state_ == AppState::CompanionSync || state_ == AppState::Sleeping
-        || powerOffStarted_) {
+    if (state_ == AppState::Booting || state_ == AppState::UsbTransfer || state_ == AppState::CompanionSync
+        || state_ == AppState::Sleeping || powerOffStarted_) {
         return;
     }
 
@@ -5232,7 +5231,7 @@ void App::updateStandbyScreensaver(uint32_t nowMs, bool force) {
 }
 
 void App::enterPowerOff(uint32_t nowMs) {
-    if (powerOffStarted_) {
+    if (state_ == AppState::Booting || powerOffStarted_) {
         return;
     }
 

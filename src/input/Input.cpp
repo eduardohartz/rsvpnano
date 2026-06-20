@@ -14,7 +14,6 @@ struct ControlsState {
   ControlMask candidateControls = InputNone;
   ControlMask activeControls = InputNone;
   bool releasedEvent = false;
-  bool longPressEmitted = false;
   uint32_t candidateSinceMs = 0;
   uint32_t pressStartedMs = 0;
   uint32_t lastPressDurationMs = 0;
@@ -52,9 +51,8 @@ void resetControls(ControlMask controls, uint32_t nowMs) {
   gControls.initialized = true;
   gControls.stableControls = controls;
   gControls.candidateControls = controls;
-  gControls.activeControls = controls;
+  gControls.activeControls = InputNone;
   gControls.releasedEvent = false;
-  gControls.longPressEmitted = false;
   gControls.candidateSinceMs = nowMs;
   gControls.pressStartedMs = controls == InputNone ? 0 : nowMs;
   gControls.lastPressDurationMs = 0;
@@ -93,7 +91,6 @@ void updateControls(ControlMask controls, uint32_t nowMs) {
       gControls.activeControls = gControls.stableControls;
       gControls.pressStartedMs = nowMs;
       gControls.lastPressDurationMs = 0;
-      gControls.longPressEmitted = false;
       return;
     }
 
@@ -107,7 +104,6 @@ void updateControls(ControlMask controls, uint32_t nowMs) {
       gControls.activeControls = gControls.stableControls;
       gControls.pressStartedMs = nowMs;
       gControls.lastPressDurationMs = 0;
-      gControls.longPressEmitted = false;
     }
   }
 }
@@ -115,14 +111,14 @@ void updateControls(ControlMask controls, uint32_t nowMs) {
 bool pollControlsEvent(ControlMask controls, uint32_t nowMs, Event &event) {
   updateControls(controls, nowMs);
 
-  if (gControls.stableControls != InputNone && !gControls.longPressEmitted &&
+  if (gControls.stableControls != InputNone && gControls.activeControls != InputNone &&
       nowMs - gControls.pressStartedMs >= gControlTiming.longPressMs) {
-    gControls.longPressEmitted = true;
-    event = {gControls.stableControls, Gesture::LongPressed};
+    event = {gControls.activeControls, Gesture::LongPressed};
+    gControls.activeControls = InputNone;
     return true;
   }
 
-  if (gControls.releasedEvent && !gControls.longPressEmitted &&
+  if (gControls.releasedEvent && gControls.activeControls != InputNone &&
       gControls.lastPressDurationMs <= gControlTiming.shortPressMaxMs) {
     event = {gControls.activeControls, Gesture::ShortPressed};
     gControls.activeControls = InputNone;
