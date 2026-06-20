@@ -24,7 +24,7 @@ namespace WaveshareAmoled18::Buttons {
 constexpr int kBootPin = 0;
 constexpr int kPowerPin = -1;
 constexpr int kKeyPin = -1;
-constexpr uint16_t kDebounceMs = 25;
+constexpr uint16_t kDebounceMs = 10;
 constexpr uint16_t kShortPressMaxMs = 700;
 constexpr uint16_t kLongPressMs = 900;
 }
