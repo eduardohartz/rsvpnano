@@ -8,7 +8,7 @@
     "Device-hosted web companion",
     "RSS feed downloads",
     "USB SD-card transfer mode",
-    "GPIO42 backlight profile"
+    "LCD 3.49 rev2 board profile"
   ],
   "builds": [
     {
