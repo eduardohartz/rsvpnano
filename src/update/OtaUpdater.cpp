@@ -27,6 +27,12 @@ const char *kRedirectHeaderKeys[] = {
     "Location",
 };
 
+struct ReleaseSource {
+  String owner;
+  String repo;
+  String tag;
+};
+
 String trimCopy(String value) {
   value.trim();
   return value;
@@ -61,6 +67,49 @@ String urlEncodePathSegment(const String &value) {
     encoded += kHex[byte & 0x0F];
   }
   return encoded;
+}
+
+bool splitOwnerRepo(const String &value, String &owner, String &repo) {
+  const String trimmed = trimCopy(value);
+  const int slash = trimmed.indexOf('/');
+  if (slash <= 0 || slash >= static_cast<int>(trimmed.length() - 1)) {
+    return false;
+  }
+
+  owner = trimmed.substring(0, slash);
+  repo = trimmed.substring(slash + 1);
+  owner.trim();
+  repo.trim();
+  return !owner.isEmpty() && !repo.isEmpty();
+}
+
+ReleaseSource releaseSourceForConfig(const OtaUpdater::Config &config) {
+  ReleaseSource source{trimCopy(config.githubOwner), trimCopy(config.githubRepo),
+                       trimCopy(config.githubTag)};
+
+  splitOwnerRepo(source.owner, source.owner, source.repo);
+  splitOwnerRepo(source.repo, source.owner, source.repo);
+
+  const int at = source.tag.indexOf('@');
+  if (at > 0 && at < static_cast<int>(source.tag.length() - 1)) {
+    String repoPart = source.tag.substring(0, at);
+    source.tag = source.tag.substring(at + 1);
+    source.tag.trim();
+    repoPart.trim();
+    if (!splitOwnerRepo(repoPart, source.owner, source.repo) && !repoPart.isEmpty()) {
+      source.repo = repoPart;
+    }
+  }
+
+  return source;
+}
+
+String httpClientErrorDetail(const String &prefix, int statusCode) {
+  if (statusCode >= 0) {
+    return prefix + " HTTP " + String(statusCode);
+  }
+
+  return prefix + " " + HTTPClient::errorToString(statusCode);
 }
 
 String readBodyLimited(HTTPClient &http, size_t maxBytes) {
@@ -217,12 +266,17 @@ void OtaUpdater::disconnectWiFi() const { net::disconnect(); }
 bool OtaUpdater::fetchRelease(const Config &config, LatestRelease &release,
                               String &errorDetail, StatusCallback callback, void *context) const {
   const String version = currentVersion();
-  const String githubTag = trimCopy(config.githubTag);
+  const ReleaseSource source = releaseSourceForConfig(config);
+  if (source.owner.isEmpty() || source.repo.isEmpty()) {
+    errorDetail = "GitHub source missing";
+    return false;
+  }
+
   const String releasePath =
-      githubTag.isEmpty() ? "latest" : "tags/" + urlEncodePathSegment(githubTag);
-  const String url = "https://api.github.com/repos/" + config.githubOwner + "/" +
-                     config.githubRepo + "/releases/" + releasePath;
-  const String sourceLabel = githubTag.isEmpty() ? config.githubRepo : config.githubRepo + "@" + githubTag;
+      source.tag.isEmpty() ? "latest" : "tags/" + urlEncodePathSegment(source.tag);
+  const String url = "https://api.github.com/repos/" + source.owner + "/" + source.repo +
+                     "/releases/" + releasePath;
+  const String sourceLabel = source.tag.isEmpty() ? source.repo : source.repo + ":" + source.tag;
 
   reportStatus(callback, context, kStatusTitle, "Checking GitHub", sourceLabel, 22);
 
@@ -245,9 +299,9 @@ bool OtaUpdater::fetchRelease(const Config &config, LatestRelease &release,
   const int statusCode = http.GET();
   if (statusCode != HTTP_CODE_OK) {
     if (statusCode == HTTP_CODE_NOT_FOUND) {
-      errorDetail = githubTag.isEmpty() ? "No published release" : "Release tag not found";
+      errorDetail = source.tag.isEmpty() ? "No published release" : "Release tag not found";
     } else {
-      errorDetail = "GitHub HTTP " + String(statusCode);
+      errorDetail = httpClientErrorDetail("GitHub", statusCode);
     }
     http.end();
     return false;
@@ -311,7 +365,7 @@ bool OtaUpdater::resolveDownloadUrl(const String &assetUrl, const String &versio
     return false;
   }
 
-  errorDetail = "Asset HTTP " + String(statusCode);
+  errorDetail = httpClientErrorDetail("Asset", statusCode);
   http.end();
   return false;
 }
