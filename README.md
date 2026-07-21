@@ -148,9 +148,11 @@ The device can host its own browser companion page.
 1. Swipe up from the bottom edge to open quick settings.
 2. Choose `Sync`.
 3. Choose `Wi-Fi Sync`.
-4. The device shows the Wi-Fi network name and the browser URL.
-5. Connect your phone, tablet, or computer to the `RSVP-Nano-xxxxxx` Wi-Fi network.
-6. Open the URL shown on the device, usually `http://192.168.4.1`.
+4. With home Wi-Fi credentials saved, the device joins your network and shows its URL — open it
+   from any device on the same network (`http://ereader.local` also works). Without saved
+   credentials (or if the join fails), it falls back to hosting its own `RSVP-Nano-xxxxxx`
+   network: connect to it and open the URL shown, usually `http://192.168.4.1`.
+5. Touch and hold the sync screen (or tap `BOOT`) to stop sync when finished.
 
 The web companion has pages for:
 
@@ -369,10 +371,11 @@ Use this page to connect the native companion app or the web companion.
 1. Swipe up from the bottom edge.
 2. Choose `Sync`.
 3. Choose `Wi-Fi Sync`.
-4. Connect to the Wi-Fi network shown on the device.
+4. With saved home Wi-Fi, stay on your normal network; otherwise connect to the Wi-Fi network
+   shown on the device.
 5. Open the URL shown on the device.
 6. Use the web companion or native companion app.
-7. Exit from the device when finished.
+7. Touch and hold the sync screen to exit when finished.
 
 When Companion Sync exits, the device reloads settings and refreshes the library.
 

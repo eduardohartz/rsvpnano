@@ -21,7 +21,7 @@ namespace {
 // and shared with the device UI; pull them in so call sites are unchanged.
 using namespace settings;
 
-constexpr const char *kMdnsName = "rsvp-nano";
+constexpr const char *kMdnsName = "ereader";
 constexpr const char *kRssConfigPath = "/config/rss.conf";
 constexpr size_t kMaxMetadataLineChars = 160;
 constexpr size_t kMaxSettingsPatchBytes = 2048;
@@ -533,7 +533,6 @@ String rsvpMetadataValueFromLine(const String &line, const char *directive, bool
 CompanionSyncManager *CompanionSyncManager::instance_ = nullptr;
 
 bool CompanionSyncManager::begin(const Config &config) {
-  (void)config;
   if (active_) {
     return true;
   }
@@ -544,7 +543,9 @@ bool CompanionSyncManager::begin(const Config &config) {
   statusLine2_ = "Preparing Wi-Fi";
   preferences_.begin(kPrefsNamespace, false);
 
-  const bool networkReady = startAccessPoint();
+  // Prefer hosting on the stored home network so clients don't have to switch
+  // networks; fall back to the device's own access point when that fails.
+  const bool networkReady = startStation(config) || startAccessPoint();
   if (!networkReady) {
     end();
     // Set after end(), which resets the status lines to "Idle".
@@ -673,6 +674,26 @@ void CompanionSyncManager::handleNotFoundStatic() {
   if (instance_ != nullptr) {
     instance_->handleNotFound();
   }
+}
+
+bool CompanionSyncManager::startStation(const Config &config) {
+  if (config.wifiSsid.isEmpty()) {
+    return false;
+  }
+
+  statusLine1_ = "Joining Wi-Fi";
+  statusLine2_ = config.wifiSsid;
+  if (!net::connectStation(config.wifiSsid, config.wifiPassword)) {
+    Serial.printf("[sync] station join failed ssid=%s\n", config.wifiSsid.c_str());
+    net::disconnect();
+    return false;
+  }
+
+  networkSsid_ = config.wifiSsid;
+  networkMode_ = NetworkMode::Station;
+  Serial.printf("[sync] station ip=%s ssid=%s\n", ipToString(WiFi.localIP()).c_str(),
+                config.wifiSsid.c_str());
+  return true;
 }
 
 bool CompanionSyncManager::startAccessPoint() {

@@ -313,6 +313,7 @@ namespace {
     // Amplitude multipliers per level, in quarters (Medium keeps the base level).
     constexpr int32_t kVolumeLevelQuarters[kVolumeLevelCount] = {2, 4, 7, 10};
     constexpr const char* kWelcomeTitle = "Eduardo's E-Reader";
+    constexpr uint32_t kSyncExitHoldMs = 1200;
     constexpr const char* kPrefStatWords = "st_words";
     constexpr const char* kPrefStatSeconds = "st_sec";
     constexpr const char* kPrefSleepTimer = "slp_tmr";
@@ -1299,8 +1300,22 @@ bool App::handleMenuInput(const Input::Event& event, uint32_t nowMs) {
 
 bool App::handleReaderInput(const Input::Event& event, uint32_t nowMs) {
     if (Input::isTouchEvent(event)) {
-        if (state_ == AppState::Booting || state_ == AppState::UsbTransfer || state_ == AppState::CompanionSync
-            || state_ == AppState::Sleeping || powerOffStarted_) {
+        if (state_ == AppState::CompanionSync) {
+            // Touch-hold anywhere on the sync screen shuts sync down.
+            if (event.gesture == Input::Gesture::TouchStart) {
+                syncTouchHoldStartMs_ = nowMs;
+                syncTouchHoldActive_ = true;
+            } else if (Input::isTouchReleaseGesture(event.gesture)) {
+                syncTouchHoldActive_ = false;
+            } else if (syncTouchHoldActive_ && nowMs - syncTouchHoldStartMs_ >= kSyncExitHoldMs) {
+                syncTouchHoldActive_ = false;
+                playUiSound(UiSound::Back);
+                exitCompanionSync(nowMs);
+            }
+            return true;
+        }
+        if (state_ == AppState::Booting || state_ == AppState::UsbTransfer || state_ == AppState::Sleeping
+            || powerOffStarted_) {
             Input::cancel();
             pausedTouch_.active = false;
             pausedTouchIntent_ = TouchIntent::None;
@@ -5161,6 +5176,7 @@ void App::enterCompanionSync(uint32_t nowMs) {
     }
 
     lastCompanionSyncRenderMs_ = 0;
+    syncTouchHoldActive_ = false;
     setState(AppState::CompanionSync, nowMs);
 }
 
@@ -5169,12 +5185,17 @@ void App::updateCompanionSync(uint32_t nowMs) {
 
     if (nowMs - lastCompanionSyncRenderMs_ >= 1000) {
         lastCompanionSyncRenderMs_ = nowMs;
-        display_.renderStatus("Sync", companionSync_.statusLine1(), companionSync_.statusLine2());
+        // Rotate the first line between the network name and the exit hint; the
+        // URL on the second line stays put.
+        const bool showExitHint = (nowMs / 3000U) % 2U == 1U;
+        display_.renderStatus("Sync", showExitHint ? String("Hold to disable") : companionSync_.statusLine1(),
+                              companionSync_.statusLine2());
     }
 }
 
 void App::exitCompanionSync(uint32_t nowMs) {
     Serial.println("[app] leaving companion sync mode");
+    syncTouchHoldActive_ = false;
     display_.renderStatus("Sync", "Stopping", "");
     companionSync_.end();
     preferences_.end();

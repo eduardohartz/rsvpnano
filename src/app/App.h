@@ -623,6 +623,9 @@ private:
     bool passcodeSettingMode_ = false;
     bool unlockToBookEnabled_ = true;
     size_t homeSelectedIndex_ = 0;
+    // Touch-hold on the sync screen exits companion sync.
+    uint32_t syncTouchHoldStartMs_ = 0;
+    bool syncTouchHoldActive_ = false;
     // Reading statistics (lifetime totals persisted; pending counters flushed on pause).
     uint32_t totalWordsRead_ = 0;
     uint32_t totalReadingSec_ = 0;
