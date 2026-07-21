@@ -300,8 +300,8 @@ void syncTouchOrientation() {
 
 bool beginTouch(uint32_t nowMs) {
   resetTouchState();
-  gTouch.lastPollMs = 0;
-  gTouch.backoffUntilMs = 0;
+  gTouch.lastPollMs = nowMs - gTouchTiming.pollIntervalMs;
+  gTouch.backoffUntilMs = nowMs;
   gTouch.consecutiveReadFailures = 0;
 
   gTouch.initialized = Board::Input::beginTouch();
@@ -311,13 +311,18 @@ bool beginTouch(uint32_t nowMs) {
   return gTouch.initialized;
 }
 
+// millis()-wrap-safe "nowMs has reached deadline" check.
+constexpr bool reachedMs(uint32_t nowMs, uint32_t deadlineMs) {
+  return static_cast<int32_t>(nowMs - deadlineMs) >= 0;
+}
+
 bool pollTouchEvent(uint32_t nowMs, Event &event) {
   syncTouchOrientation();
 
   {
     // Touch hardware can disappear during resets; retry without blocking button input.
     if (!gTouch.initialized) {
-      if (nowMs >= gTouch.backoffUntilMs && !beginTouch(nowMs)) {
+      if (reachedMs(nowMs, gTouch.backoffUntilMs) && !beginTouch(nowMs)) {
         gTouch.backoffUntilMs = nowMs + gTouchTiming.recoveryRetryMs;
       }
       return false;
@@ -326,7 +331,7 @@ bool pollTouchEvent(uint32_t nowMs, Event &event) {
 
   {
     // Keep failed reads from hammering the bus and keep normal polling bounded.
-    if (nowMs < gTouch.backoffUntilMs ||
+    if (!reachedMs(nowMs, gTouch.backoffUntilMs) ||
         nowMs - gTouch.lastPollMs < gTouchTiming.pollIntervalMs) {
       return false;
     }
@@ -334,33 +339,31 @@ bool pollTouchEvent(uint32_t nowMs, Event &event) {
   }
 
   TouchContact contact;
-  const bool contactRead = [&]() {
-    if (!Board::Input::touchReady()) {
-      contact = {};
-      return true;
-    }
-
-    if (Board::Input::readTouch(contact)) {
-      gTouch.consecutiveReadFailures = 0;
-      return true;
-    }
-
+  if (!Board::Input::touchReady()) {
+    contact = {};
+  } else if (Board::Input::readTouch(contact)) {
+    gTouch.consecutiveReadFailures = 0;
+  } else {
     gTouch.backoffUntilMs = nowMs + gTouchTiming.failureBackoffMs;
     ++gTouch.consecutiveReadFailures;
 
     if (gTouch.consecutiveReadFailures >= gTouchTiming.maxConsecutiveReadFailures) {
       gTouch.initialized = false;
       gTouch.backoffUntilMs = nowMs + gTouchTiming.recoveryRetryMs;
+      const bool wasActive = gTouch.active;
+      const uint16_t lastX = gTouch.lastX;
+      const uint16_t lastY = gTouch.lastY;
       resetTouchState();
+      if (wasActive) {
+        // Release any in-flight gesture so consumers don't wait forever for TouchEnd.
+        event = {InputTouch, Gesture::TouchEnd, lastX, lastY};
+        return true;
+      }
     }
-    return false;
-  }();
-
-  if (!contactRead) {
     return false;
   }
 
-  if (nowMs < gTouch.ignoreEventsUntilMs) {
+  if (!reachedMs(nowMs, gTouch.ignoreEventsUntilMs)) {
     resetTouchState();
     return false;
   }

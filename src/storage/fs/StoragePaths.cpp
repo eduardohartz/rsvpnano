@@ -102,7 +102,8 @@ namespace StoragePaths {
         }
 
         if (lowered.endsWith(kIndexExtension) || lowered.endsWith(kDataExtension)
-            || lowered.endsWith(kProgressExtension) || lowered.endsWith(kTempExtension)) {
+            || lowered.endsWith(kProgressExtension) || lowered.endsWith(kTempExtension)
+            || lowered.endsWith(kFailedExtension) || lowered.endsWith(kConvertingExtension)) {
             return true;
         }
 

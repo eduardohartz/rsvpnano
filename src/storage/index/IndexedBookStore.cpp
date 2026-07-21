@@ -193,7 +193,17 @@ bool IndexedBookStore::loadWordWindow(size_t index) const {
         return false;
     }
 
+    // The builder packs word bytes back-to-back, so the window span must equal the
+    // sum of record lengths; a corrupt record table could otherwise request an
+    // allocation up to the whole data file (fatal with exceptions disabled).
     const size_t dataBytes = dataEnd - dataStart;
+    size_t expectedBytes = 0;
+    for (const WordRecord& record: records) {
+        expectedBytes += record.length;
+    }
+    if (dataBytes != expectedBytes) {
+        return false;
+    }
     std::vector<char> buffer(dataBytes);
     if (dataBytes > 0) {
         if (!dataFile_.seek(dataStart)) {

@@ -11,6 +11,9 @@ namespace RsvpText {
 using namespace StoragePaths;
 
 constexpr size_t kMaxChapterTitleChars = 64;
+// Directive lines longer than this keep only their prefix; the converter writes
+// unbounded "@title ..." lines, so an oversized line must not abort the scan.
+constexpr size_t kMaxDirectiveLineChars = 160;
 
 bool prefixHasBoundary(const String &lowered, const char *prefix) {
   const size_t prefixLength = std::strlen(prefix);
@@ -92,27 +95,11 @@ RsvpDirectiveValues readRsvpDirectiveValues(const String &path) {
     return values;
   }
 
-  String line;
-  line.reserve(kMaxChapterTitleChars + 16);
-  while (file.available()) {
-    const char c = static_cast<char>(file.read());
-    if (c == '\r') {
-      continue;
-    }
-
-    if (c != '\n') {
-      line += c;
-      if (line.length() > kMaxChapterTitleChars + 16) {
-        line = "";
-        break;
-      }
-      continue;
-    }
-
-    String trimmed = stripBom(line);
+  // Returns true when scanning should stop.
+  auto processLine = [&values](const String &rawLine) {
+    String trimmed = stripBom(rawLine);
     if (trimmed.isEmpty()) {
-      line = "";
-      continue;
+      return false;
     }
 
     String lowered = trimmed;
@@ -123,13 +110,39 @@ RsvpDirectiveValues readRsvpDirectiveValues(const String &path) {
                prefixHasBoundary(lowered, "@author")) {
       values.author = directiveValue(trimmed, "@author");
     } else if (!trimmed.startsWith("@")) {
-      break;
+      return true;
     }
 
-    if (!values.title.isEmpty() && !values.author.isEmpty()) {
+    return !values.title.isEmpty() && !values.author.isEmpty();
+  };
+
+  String line;
+  line.reserve(kMaxChapterTitleChars + 16);
+  bool lineOverflow = false;
+  bool stopped = false;
+  while (file.available()) {
+    const char c = static_cast<char>(file.read());
+    if (c == '\r') {
+      continue;
+    }
+
+    if (c != '\n') {
+      if (!lineOverflow) {
+        line += c;
+        lineOverflow = line.length() > kMaxDirectiveLineChars;
+      }
+      continue;
+    }
+
+    if (processLine(line)) {
+      stopped = true;
       break;
     }
     line = "";
+    lineOverflow = false;
+  }
+  if (!stopped && !line.isEmpty()) {
+    processLine(line);
   }
 
   file.close();
@@ -149,8 +162,28 @@ String readRsvpDirectiveValue(const String &path, const char *directive) {
     return "";
   }
 
+  String result;
+  // Returns true when scanning should stop.
+  auto processLine = [&result, directive](const String &rawLine) {
+    String trimmed = stripBom(rawLine);
+    if (trimmed.isEmpty()) {
+      return false;
+    }
+
+    String lowered = trimmed;
+    lowered.toLowerCase();
+    if (prefixHasBoundary(lowered, directive)) {
+      result = directiveValue(trimmed, directive);
+      return true;
+    }
+
+    return !trimmed.startsWith("@");
+  };
+
   String line;
   line.reserve(kMaxChapterTitleChars + 16);
+  bool lineOverflow = false;
+  bool stopped = false;
   while (file.available()) {
     const char c = static_cast<char>(file.read());
     if (c == '\r') {
@@ -158,35 +191,26 @@ String readRsvpDirectiveValue(const String &path, const char *directive) {
     }
 
     if (c != '\n') {
-      line += c;
-      if (line.length() > kMaxChapterTitleChars + 16) {
-        line = "";
-        break;
+      if (!lineOverflow) {
+        line += c;
+        lineOverflow = line.length() > kMaxDirectiveLineChars;
       }
       continue;
     }
 
-    String trimmed = stripBom(line);
-    if (trimmed.isEmpty()) {
-      line = "";
-      continue;
-    }
-
-    String lowered = trimmed;
-    lowered.toLowerCase();
-    if (prefixHasBoundary(lowered, directive)) {
-      file.close();
-      return directiveValue(trimmed, directive);
-    }
-
-    if (!trimmed.startsWith("@")) {
+    if (processLine(line)) {
+      stopped = true;
       break;
     }
     line = "";
+    lineOverflow = false;
+  }
+  if (!stopped && !line.isEmpty()) {
+    processLine(line);
   }
 
   file.close();
-  return "";
+  return result;
 }
 
 // Tokenization.

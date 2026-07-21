@@ -83,7 +83,9 @@ namespace BookLibrary {
             size_t cacheProbeCount = 0;
 
             auto hasStaleGeneratedRsvp = [&](const String& path) {
-                if (!StoragePaths::hasRsvpExtension(path)
+                // Without on-device conversion there is no way to regenerate a stale
+                // cache, so keep listing it rather than hiding the book entirely.
+                if (!onDeviceEpubConversionEnabled || !StoragePaths::hasRsvpExtension(path)
                     || !inventoryHasFileWithBytes(entries, StoragePaths::epubSiblingPathForRsvp(path))) {
                     return false;
                 }

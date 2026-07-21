@@ -545,16 +545,17 @@ bool CompanionSyncManager::begin(const Config &config) {
 
   const bool networkReady = startAccessPoint();
   if (!networkReady) {
+    end();
+    // Set after end(), which resets the status lines to "Idle".
     statusLine1_ = "Wi-Fi failed";
     statusLine2_ = "";
-    end();
     return false;
   }
 
   if (!startServer()) {
+    end();
     statusLine1_ = "HTTP failed";
     statusLine2_ = "";
-    end();
     return false;
   }
 

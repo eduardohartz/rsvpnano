@@ -22,6 +22,8 @@ constexpr const char *kConfigPaths[] = {
     "/ota.conf",
 };
 constexpr size_t kMaxReleaseJsonBytes = 32768;
+constexpr uint32_t kBodyTotalTimeoutMs = 30000;
+constexpr uint32_t kBodyIdleTimeoutMs = 8000;
 constexpr const char *kStatusTitle = "OTA";
 const char *kRedirectHeaderKeys[] = {
     "Location",
@@ -126,8 +128,15 @@ String readBodyLimited(HTTPClient &http, size_t maxBytes) {
 
   uint8_t buffer[512];
   size_t totalRead = 0;
+  const uint32_t startedMs = millis();
+  uint32_t lastByteMs = startedMs;
   while (http.connected() || stream->available()) {
     if (reportedSize > 0 && totalRead >= static_cast<size_t>(reportedSize)) {
+      break;
+    }
+
+    const uint32_t nowMs = millis();
+    if (nowMs - startedMs > kBodyTotalTimeoutMs || nowMs - lastByteMs > kBodyIdleTimeoutMs) {
       break;
     }
 
@@ -149,6 +158,7 @@ String readBodyLimited(HTTPClient &http, size_t maxBytes) {
       break;
     }
 
+    lastByteMs = millis();
     totalRead += static_cast<size_t>(bytesRead);
     for (int i = 0; i < bytesRead; ++i) {
       body += static_cast<char>(buffer[i]);

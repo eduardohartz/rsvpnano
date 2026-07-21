@@ -242,6 +242,14 @@ namespace EpubZip {
                         break;
                     }
                     totalOutputBytes += static_cast<uint32_t>(outSize);
+                    // Stop as soon as output exceeds the declared size instead of
+                    // streaming a zip bomb to storage and checking afterwards.
+                    if (totalOutputBytes > entry.uncompressedSize) {
+                        Serial.printf("[epub-zip] Inflate output exceeds declared size for %s context=%s\n",
+                                      entry.name.c_str(), context);
+                        ok = false;
+                        break;
+                    }
                 }
 
                 serviceBackground();

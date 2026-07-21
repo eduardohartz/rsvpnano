@@ -618,8 +618,9 @@ namespace EpubContent {
             if (isHeadingTag(tagInfo.name)) {
                 if (tagInfo.closing) {
                     inHeading_ = false;
-                    const String cleanedHeading = plainTextFromXmlFragment(heading_);
-                    if (!writeChapterMarker(output_, cleanedHeading, lastChapterTitle_)) {
+                    // heading_ was already tag-stripped and entity-decoded by the
+                    // streaming parser; writeChapterMarker normalizes and trims.
+                    if (!writeChapterMarker(output_, heading_, lastChapterTitle_)) {
                         return false;
                     }
                     heading_ = "";
@@ -661,9 +662,19 @@ namespace EpubContent {
             return true;
         }
 
+        // Not an entity after all (bare '&', e.g. "AT&T"): restore the literal
+        // ampersand plus the buffered characters instead of swallowing them.
+        auto emitLiteralEntity = [&]() {
+            if (!processDecodedText('&')) {
+                return false;
+            }
+            return std::all_of(entity_.c_str(), entity_.c_str() + entity_.length(),
+                               [&](char bufferedChar) { return processDecodedText(bufferedChar); });
+        };
+
         if (c == '<') {
             mode_ = Mode::Text;
-            if (!processDecodedText(' ')) {
+            if (!emitLiteralEntity()) {
                 return false;
             }
             return processTextChar(c);
@@ -671,7 +682,10 @@ namespace EpubContent {
 
         if (entity_.length() >= kMaxEntityChars || AsciiText::isWhitespace(c)) {
             mode_ = Mode::Text;
-            return processDecodedText(' ');
+            if (!emitLiteralEntity()) {
+                return false;
+            }
+            return processDecodedText(c);
         }
 
         entity_ += c;
@@ -701,6 +715,16 @@ namespace EpubContent {
         case Mode::Comment:
             return processCommentChar(c);
         case Mode::Tag:
+            if (tagOverflowed_) {
+                // Discard the rest of an oversized tag (e.g. base64 data URIs)
+                // instead of leaking it into the body text.
+                if (c == '>') {
+                    tagOverflowed_ = false;
+                    mode_ = Mode::Text;
+                    return processDecodedText(' ');
+                }
+                return true;
+            }
             tag_ += c;
             if (tag_ == "<!--") {
                 tag_ = "";
@@ -708,16 +732,15 @@ namespace EpubContent {
                 mode_ = Mode::Comment;
                 return true;
             }
-            if (tag_.length() > kMaxTagChars) {
-                tag_ = "";
-                mode_ = Mode::Text;
-                return processDecodedText(' ');
-            }
             if (c == '>') {
                 const String completedTag = tag_;
                 tag_ = "";
                 mode_ = Mode::Text;
                 return processTag(completedTag);
+            }
+            if (tag_.length() > kMaxTagChars) {
+                tag_ = "";
+                tagOverflowed_ = true;
             }
             return true;
         }

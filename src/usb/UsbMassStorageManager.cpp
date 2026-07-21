@@ -243,7 +243,7 @@ int32_t UsbMassStorageManager::readSectors(uint32_t lba, uint32_t offset, void *
                                            uint32_t bufsize) {
 #if RSVP_USB_MSC_ENABLED
   if (!active_ || !cardReady_ || buffer == nullptr || sectorBuffer_ == nullptr ||
-      offset >= blockSize_) {
+      offset >= blockSize_ || lba >= blockCount_) {
     return -1;
   }
 
@@ -285,7 +285,7 @@ int32_t UsbMassStorageManager::writeSectors(uint32_t lba, uint32_t offset, uint8
     return -1;
   }
   if (!active_ || !cardReady_ || buffer == nullptr || sectorBuffer_ == nullptr ||
-      offset >= blockSize_) {
+      offset >= blockSize_ || lba >= blockCount_) {
     return -1;
   }
 

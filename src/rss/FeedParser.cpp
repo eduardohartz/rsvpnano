@@ -441,6 +441,11 @@ String cleanText(String value) {
   value.replace("]]>", "");
   value = stripHtml(value);
   value = xmlDecode(value);
+  // Entity-escaped HTML (&lt;p&gt;...) only becomes markup after decoding, so
+  // strip again when tags surfaced.
+  if (value.indexOf('<') >= 0) {
+    value = stripHtml(value);
+  }
   value.replace("\r", "\n");
   while (value.indexOf("\n\n\n") >= 0) {
     value.replace("\n\n\n", "\n\n");
@@ -479,59 +484,65 @@ String sourceLabelForItem(const FeedItem &item) {
 }
 
 bool parseNextItem(const String &feedBody, size_t &searchStart, FeedItem &item) {
-  int itemStart = indexOfIgnoreCase(feedBody, "<item", searchStart, feedBody.length());
-  bool atom = false;
-  if (itemStart < 0) {
-    itemStart = indexOfIgnoreCase(feedBody, "<entry", searchStart, feedBody.length());
-    atom = itemStart >= 0;
-  }
-  if (itemStart < 0) {
-    return false;
-  }
+  // A bodyless item (no content and no link) is skipped rather than reported as
+  // end-of-feed, so one bad item can't hide the rest of the feed.
+  while (true) {
+    int itemStart = indexOfIgnoreCase(feedBody, "<item", searchStart, feedBody.length());
+    bool atom = false;
+    if (itemStart < 0) {
+      itemStart = indexOfIgnoreCase(feedBody, "<entry", searchStart, feedBody.length());
+      atom = itemStart >= 0;
+    }
+    if (itemStart < 0) {
+      return false;
+    }
 
-  const String closeTag = atom ? "</entry>" : "</item>";
-  const int itemEnd = indexOfIgnoreCase(feedBody, closeTag.c_str(), itemStart, feedBody.length());
-  if (itemEnd < 0) {
-    return false;
-  }
-  searchStart = static_cast<size_t>(itemEnd + closeTag.length());
+    const String closeTag = atom ? "</entry>" : "</item>";
+    const int itemEnd = indexOfIgnoreCase(feedBody, closeTag.c_str(), itemStart, feedBody.length());
+    if (itemEnd < 0) {
+      return false;
+    }
+    searchStart = static_cast<size_t>(itemEnd + closeTag.length());
 
-  const size_t start = static_cast<size_t>(itemStart);
-  const size_t end = static_cast<size_t>(itemEnd);
-  item.title = cleanText(valueBetween(feedBody, "<title", "</title>", start, end));
-  item.link = cleanText(valueBetween(feedBody, "<link>", "</link>", start, end));
-  if (item.link.isEmpty()) {
-    item.link = cleanText(attributeValue(feedBody, "<link", "href", start, end));
-  }
-  if (item.link.isEmpty()) {
-    item.link = cleanText(valueBetween(feedBody, "<guid", "</guid>", start, end));
-  }
-  item.author = cleanText(valueBetween(feedBody, "<author", "</author>", start, end));
-  if (item.author.isEmpty()) {
-    item.author = cleanText(valueBetween(feedBody, "<dc:creator", "</dc:creator>", start, end));
-  }
-  if (item.author.isEmpty()) {
-    item.author = sourceLabelForItem(item);
-  }
+    const size_t start = static_cast<size_t>(itemStart);
+    const size_t end = static_cast<size_t>(itemEnd);
+    item.title = cleanText(valueBetween(feedBody, "<title", "</title>", start, end));
+    item.link = cleanText(valueBetween(feedBody, "<link>", "</link>", start, end));
+    if (item.link.isEmpty()) {
+      item.link = cleanText(attributeValue(feedBody, "<link", "href", start, end));
+    }
+    if (item.link.isEmpty()) {
+      item.link = cleanText(valueBetween(feedBody, "<guid", "</guid>", start, end));
+    }
+    item.author = cleanText(valueBetween(feedBody, "<author", "</author>", start, end));
+    if (item.author.isEmpty()) {
+      item.author = cleanText(valueBetween(feedBody, "<dc:creator", "</dc:creator>", start, end));
+    }
+    if (item.author.isEmpty()) {
+      item.author = sourceLabelForItem(item);
+    }
 
-  item.body = cleanText(valueBetween(feedBody, "<content:encoded", "</content:encoded>", start, end));
-  if (item.body.isEmpty()) {
-    item.body = cleanText(valueBetween(feedBody, "<content", "</content>", start, end));
-  }
-  if (item.body.isEmpty()) {
-    item.body = cleanText(valueBetween(feedBody, "<description", "</description>", start, end));
-  }
-  if (item.body.isEmpty()) {
-    item.body = cleanText(valueBetween(feedBody, "<summary", "</summary>", start, end));
-  }
-  if (item.body.isEmpty()) {
-    item.body = item.link;
-  }
+    item.body = cleanText(valueBetween(feedBody, "<content:encoded", "</content:encoded>", start, end));
+    if (item.body.isEmpty()) {
+      item.body = cleanText(valueBetween(feedBody, "<content", "</content>", start, end));
+    }
+    if (item.body.isEmpty()) {
+      item.body = cleanText(valueBetween(feedBody, "<description", "</description>", start, end));
+    }
+    if (item.body.isEmpty()) {
+      item.body = cleanText(valueBetween(feedBody, "<summary", "</summary>", start, end));
+    }
+    if (item.body.isEmpty()) {
+      item.body = item.link;
+    }
 
-  if (item.title.isEmpty()) {
-    item.title = item.link.isEmpty() ? "RSS Article" : item.link;
+    if (item.title.isEmpty()) {
+      item.title = item.link.isEmpty() ? "RSS Article" : item.link;
+    }
+    if (!item.body.isEmpty()) {
+      return true;
+    }
   }
-  return !item.body.isEmpty();
 }
 
 }  // namespace feedparser

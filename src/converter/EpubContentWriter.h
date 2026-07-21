@@ -43,6 +43,7 @@ namespace EpubContent {
         String entity_;
         String commentTail_;
         Mode mode_ = Mode::Text;
+        bool tagOverflowed_ = false;
         bool inHeading_ = false;
         bool reachedWordLimit_ = false;
         int skipDepth_ = 0;

@@ -575,11 +575,11 @@ namespace IndexedBook {
 
                         if (c == '\n') {
                             keepReading = processLine(line);
-                            if (!keepReading && RsvpText::kMaxBookWords > 0) {
+                            if (!keepReading && (stats.memoryLow || buildContext.failed)) {
+                                parseFailed = true;
+                            } else if (!keepReading && RsvpText::kMaxBookWords > 0) {
                                 Serial.printf("[storage-index] Reached %lu word limit, truncating book\n",
                                               static_cast<unsigned long>(RsvpText::kMaxBookWords));
-                            } else if (!keepReading && (stats.memoryLow || buildContext.failed)) {
-                                parseFailed = true;
                             }
                             line = "";
                             continue;
