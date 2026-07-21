@@ -103,6 +103,11 @@ private:
         QuickSync,
         FocusTimerGenres,
         FocusTimerSession,
+        Welcome,
+        Home,
+        PasscodeEntry,
+        SettingsSound,
+        SettingsSecurity,
     };
 
     enum class FooterMetricMode : uint8_t {
@@ -239,6 +244,16 @@ private:
     String readingStatsLabel() const;
     String sleepTimerLabel() const;
     ScreensaverMode effectiveScreensaverMode() const;
+    String volumeLabel() const;
+    int16_t scaledToneAmplitude(int16_t baseAmplitude) const;
+    void advanceFromWelcome(uint32_t nowMs);
+    void finishBootUnlock(uint32_t nowMs);
+    void openHomeScreen(uint32_t nowMs);
+    void activateHomeSelection(uint32_t nowMs);
+    void handleHomeTouchRelease(uint16_t x, int deltaX, int deltaY, uint32_t nowMs);
+    void handlePasscodeSwipe(int deltaX, int deltaY, uint32_t nowMs);
+    void renderPasscodeScreen(const String &statusLine = "");
+    void renderWelcomeScreen();
     void applyBrowseDragScroll(uint16_t y, uint32_t nowMs, bool forceRender);
     void renderContextBrowsePreview(size_t currentIndex, uint16_t scrollProgressPermille);
     void applyMenuTouchGesture(const TouchEvent& event, uint32_t nowMs);
@@ -600,6 +615,14 @@ private:
     bool readerChapterVisibleWhilePlaying_ = false;
     bool readerProgressVisibleWhilePlaying_ = false;
     bool uiSoundsEnabled_ = true;
+    uint8_t uiVolumeIndex_ = 1;
+    // Boot welcome / passcode lock / home screen flow.
+    bool bootWelcomeShown_ = false;
+    String passcode_;
+    String passcodeEntryBuffer_;
+    bool passcodeSettingMode_ = false;
+    bool unlockToBookEnabled_ = true;
+    size_t homeSelectedIndex_ = 0;
     // Reading statistics (lifetime totals persisted; pending counters flushed on pause).
     uint32_t totalWordsRead_ = 0;
     uint32_t totalReadingSec_ = 0;

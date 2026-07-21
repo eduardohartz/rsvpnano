@@ -114,6 +114,8 @@ class DisplayManager {
                             const String &chapterLabel = "", uint8_t progressPercent = 0,
                             const String &overlayText = "", bool showFooter = true,
                             ReaderChrome chrome = ReaderChrome());
+  // Home screen: Books and Articles icons with labels; selectedIndex 0 or 1.
+  void renderHomeScreen(size_t selectedIndex);
   void renderMenu(const char *const *items, size_t itemCount, size_t selectedIndex);
   void renderMenu(const std::vector<String> &items, size_t selectedIndex);
   void renderLibrary(const std::vector<LibraryItem> &items, size_t selectedIndex);

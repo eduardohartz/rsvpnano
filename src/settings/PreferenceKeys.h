@@ -35,6 +35,9 @@ constexpr const char *kPrefChapterLabelScroll = "ch_lbl_scroll";
 constexpr const char *kPrefReaderFontSize = "font_size";
 constexpr const char *kPrefReaderTypeface = "typeface";
 constexpr const char *kPrefUiSounds = "ui_snd";
+constexpr const char *kPrefUiVolume = "ui_vol";
+constexpr const char *kPrefPasscode = "passcd";
+constexpr const char *kPrefUnlockToBook = "unlk_book";
 
 // Typography.
 constexpr const char *kPrefTypographyFocusHighlight = "type_hlt";

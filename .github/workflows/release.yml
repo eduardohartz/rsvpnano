@@ -30,6 +30,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RELEASE_TAG="${{ inputs.version }}"
+            case "$RELEASE_TAG" in
+              v*) ;;
+              *) RELEASE_TAG="v${RELEASE_TAG}" ;;
+            esac
           else
             RELEASE_TAG="${GITHUB_REF_NAME}"
           fi

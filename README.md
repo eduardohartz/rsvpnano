@@ -228,6 +228,16 @@ reader screens, subtle handles at the top and bottom edges hint that those menus
 - On 1.8, firmware ignores the unreliable PWR input. Use swipe down for the main menu, swipe up for quick settings, `BOOT` tap for play/pause or Back, and `BOOT` hold for standby/screensaver.
 - USB Transfer exits automatically when the computer ejects the device. On boards with firmware PWR input, holding `PWR` can also leave USB Transfer after copying is finished.
 
+### Startup, Lock, and Home
+
+- Powering on shows a welcome screen; press anywhere (or tap `BOOT`) to open.
+- With a passcode set (Settings > Security), opening requires your four-swipe combo
+  (up/down/left/right). A button press clears the current attempt.
+- After unlocking, the home screen offers Books and Articles; tap an icon to open its list, or
+  swipe sideways and press `BOOT` to choose. With "Unlock to book" enabled, the device returns
+  straight to the book you were reading instead. With an empty library it opens the reader demo.
+- Settings > Sound holds the sounds on/off toggle and a four-step volume control.
+
 ### Reader Controls
 
 - Tap the rewind edge: left by default, or top-right when Reader controls is set to Rewind top-right. Rewinds to the start of the current sentence, or the previous sentence if you are already at the start.

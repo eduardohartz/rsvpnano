@@ -2713,6 +2713,66 @@ void DisplayManager::renderScrollView(const std::vector<ContextWord> &words, uin
   flushScaledFrame(scale, virtualWidth, virtualHeight);
 }
 
+void DisplayManager::renderHomeScreen(size_t selectedIndex) {
+  const String renderKey = "home|" + String(selectedIndex) + "|b:" + batteryLabel_ + "|d:" +
+                           String(darkMode_ ? 1 : 0) + "|n:" + String(nightMode_ ? 1 : 0);
+  if (!initialized_ || renderKey == lastRenderKey_) {
+    return;
+  }
+  lastRenderKey_ = renderKey;
+
+  const int virtualWidth = kDisplayWidth;
+  const int virtualHeight = kDisplayHeight;
+  clearVirtualBuffer(virtualWidth, virtualHeight);
+
+  const int labelHeight = kTinyGlyphHeight * kTinyScale;
+  const int iconSize = std::min(virtualHeight / 2, 64);
+  const int cellWidth = virtualWidth / 2;
+  const int iconY = std::max(4, (virtualHeight - iconSize - labelHeight - 12) / 2);
+  const int labelY = iconY + iconSize + 8;
+
+  auto drawOutlineRect = [&](int x, int y, int width, int height, int thickness, uint16_t color) {
+    fillVirtualRect(x, y, width, thickness, color);
+    fillVirtualRect(x, y + height - thickness, width, thickness, color);
+    fillVirtualRect(x, y, thickness, height, color);
+    fillVirtualRect(x + width - thickness, y, thickness, height, color);
+  };
+
+  for (int cell = 0; cell < 2; ++cell) {
+    const bool selected = static_cast<size_t>(cell) == selectedIndex;
+    const uint16_t color = selected ? focusColor() : dimColor();
+    const int centerX = cellWidth * cell + cellWidth / 2;
+    const int iconX = centerX - iconSize / 2;
+
+    if (selected) {
+      drawOutlineRect(iconX - 10, iconY - 8, iconSize + 20, iconSize + labelHeight + 26, 2,
+                      selectedBarColor());
+    }
+
+    if (cell == 0) {
+      // Book: cover outline with a spine and two title lines.
+      drawOutlineRect(iconX, iconY, iconSize, iconSize, 3, color);
+      fillVirtualRect(iconX + iconSize / 5, iconY, 3, iconSize, color);
+      fillVirtualRect(iconX + iconSize / 5 + 8, iconY + iconSize / 4, iconSize / 2, 3, color);
+      fillVirtualRect(iconX + iconSize / 5 + 8, iconY + iconSize / 4 + 8, iconSize / 3, 3, color);
+    } else {
+      // Article: page outline with a headline block and body lines.
+      drawOutlineRect(iconX, iconY, iconSize, iconSize, 3, color);
+      fillVirtualRect(iconX + 7, iconY + 7, iconSize / 2 - 7, iconSize / 4, color);
+      for (int line = 0; line < 3; ++line) {
+        fillVirtualRect(iconX + 7, iconY + iconSize / 2 + line * 8, iconSize - 14, 3, color);
+      }
+    }
+
+    const String label = cell == 0 ? "Books" : "Articles";
+    const int labelWidth = measureTinyTextWidth(label, kTinyScale);
+    drawTinyTextAt(label, centerX - labelWidth / 2, labelY, color, kTinyScale);
+  }
+
+  drawBatteryBadge();
+  flushScaledFrame(1, virtualWidth, virtualHeight);
+}
+
 void DisplayManager::renderMenu(const char *const *items, size_t itemCount, size_t selectedIndex) {
   if (items == nullptr || itemCount == 0) {
     renderCenteredWord("MENU");

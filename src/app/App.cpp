@@ -215,7 +215,6 @@ namespace {
     constexpr size_t kSettingsDisplayReaderChapterIndex = 9;
     constexpr size_t kSettingsDisplayReaderProgressIndex = 10;
     constexpr size_t kSettingsDisplayLanguageIndex = 11;
-    constexpr size_t kSettingsDisplaySoundsIndex = 12;
     constexpr size_t kSettingsDisplayRestructuredThemeIndex = 1;
     constexpr size_t kSettingsDisplayRestructuredBrightnessIndex = 2;
     constexpr size_t kSettingsDisplayRestructuredHandednessIndex = 3;
@@ -227,7 +226,6 @@ namespace {
     constexpr size_t kSettingsDisplayRestructuredReaderBatteryIndex = 9;
     constexpr size_t kSettingsDisplayRestructuredReaderChapterIndex = 10;
     constexpr size_t kSettingsDisplayRestructuredReaderProgressIndex = 11;
-    constexpr size_t kSettingsDisplayRestructuredSoundsIndex = 12;
     constexpr size_t kSettingsPacingReadingModeIndex = 1;
     constexpr size_t kSettingsPacingPauseModeIndex = 2;
     constexpr size_t kSettingsPacingWpmIndex = 3;
@@ -241,6 +239,15 @@ namespace {
     constexpr size_t kSettingsPacingRestructuredResetIndex = 6;
     constexpr size_t kSettingsPacingSleepTimerIndex = 8;
     constexpr size_t kSettingsPacingRestructuredSleepTimerIndex = 7;
+    constexpr size_t kSettingsHomeSoundIndex = 7;
+    constexpr size_t kSettingsHomeSecurityIndex = 8;
+    constexpr size_t kSettingsHomeRestructuredSoundIndex = 8;
+    constexpr size_t kSettingsHomeRestructuredSecurityIndex = 9;
+    constexpr size_t kSettingsSoundToggleIndex = 1;
+    constexpr size_t kSettingsSoundVolumeIndex = 2;
+    constexpr size_t kSettingsSecurityPasscodeIndex = 1;
+    constexpr size_t kSettingsSecurityClearIndex = 2;
+    constexpr size_t kSettingsSecurityUnlockToBookIndex = 3;
     constexpr size_t kWifiSettingsNetworkIndex = 1;
     constexpr size_t kWifiSettingsChooseIndex = 2;
     constexpr size_t kWifiSettingsAutoUpdateIndex = 3;
@@ -297,6 +304,15 @@ namespace {
     constexpr const char* kPrefOtaOwner = "ota_owner";
     constexpr const char* kPrefOtaTag = "ota_tag";
     constexpr const char* kPrefUiSounds = "ui_snd";
+    constexpr const char* kPrefUiVolume = "ui_vol";
+    constexpr const char* kPrefPasscode = "passcd";
+    constexpr const char* kPrefUnlockToBook = "unlk_book";
+    constexpr size_t kPasscodeLength = 4;
+    constexpr size_t kVolumeLevelCount = 4;
+    constexpr const char* kVolumeLevelLabels[kVolumeLevelCount] = {"Low", "Medium", "High", "Max"};
+    // Amplitude multipliers per level, in quarters (Medium keeps the base level).
+    constexpr int32_t kVolumeLevelQuarters[kVolumeLevelCount] = {2, 4, 7, 10};
+    constexpr const char* kWelcomeTitle = "Eduardo's E-Reader";
     constexpr const char* kPrefStatWords = "st_words";
     constexpr const char* kPrefStatSeconds = "st_sec";
     constexpr const char* kPrefSleepTimer = "slp_tmr";
@@ -670,6 +686,9 @@ void App::begin() {
     }
     phantomWordsEnabled_ = preferences_.getBool(kPrefPhantomWords, phantomWordsEnabled_);
     uiSoundsEnabled_ = preferences_.getBool(kPrefUiSounds, uiSoundsEnabled_);
+    uiVolumeIndex_ = preferences_.getUChar(kPrefUiVolume, uiVolumeIndex_) % kVolumeLevelCount;
+    passcode_ = preferences_.getString(kPrefPasscode, passcode_);
+    unlockToBookEnabled_ = preferences_.getBool(kPrefUnlockToBook, unlockToBookEnabled_);
     readerBatteryVisibleWhilePlaying_ =
         preferences_.getBool(kPrefReaderBatteryVisible, readerBatteryVisibleWhilePlaying_);
     readerChapterVisibleWhilePlaying_ =
@@ -959,7 +978,8 @@ const char* App::inputGestureName(Input::Gesture gesture) const {
 bool App::isSettingsMenuScreen(MenuScreen screen) const {
     return screen == MenuScreen::SettingsHome || screen == MenuScreen::SettingsDisplay
         || screen == MenuScreen::SettingsPacing || screen == MenuScreen::WifiSettings
-        || screen == MenuScreen::WifiNetworkSettings;
+        || screen == MenuScreen::WifiNetworkSettings || screen == MenuScreen::SettingsSound
+        || screen == MenuScreen::SettingsSecurity;
 }
 
 void App::setState(AppState nextState, uint32_t nowMs) {
@@ -1045,8 +1065,17 @@ void App::updateState(uint32_t nowMs) {
             return;
         }
 
-        setState((touchPlayHeld_ || playLocked_ || pauseAtSentenceEndRequested_) ? AppState::Playing : AppState::Paused,
-                 nowMs);
+        if (!bootWelcomeShown_) {
+            bootWelcomeShown_ = true;
+            touchPlayHeld_ = false;
+            playLocked_ = false;
+            pauseAtSentenceEndRequested_ = false;
+            menuScreen_ = MenuScreen::Welcome;
+            setState(AppState::Menu, nowMs);
+            return;
+        }
+
+        setState(AppState::Paused, nowMs);
         return;
     }
 
@@ -1174,6 +1203,35 @@ bool App::handleStandbyInput(const Input::Event& event, uint32_t nowMs) {
 }
 
 bool App::handleMenuInput(const Input::Event& event, uint32_t nowMs) {
+    if (menuScreen_ == MenuScreen::Welcome) {
+        if ((Input::isTouchEvent(event) && Input::isTouchReleaseGesture(event.gesture))
+            || event.gesture == Input::Gesture::ShortPressed) {
+            advanceFromWelcome(nowMs);
+        }
+        return true;
+    }
+
+    if (menuScreen_ == MenuScreen::PasscodeEntry && !passcodeSettingMode_ && !Input::isTouchEvent(event)) {
+        // Locked: buttons only reset the current combo entry; no menu escape.
+        if (event.gesture == Input::Gesture::ShortPressed) {
+            passcodeEntryBuffer_ = "";
+            renderPasscodeScreen();
+        }
+        return true;
+    }
+
+    if (menuScreen_ == MenuScreen::PasscodeEntry && passcodeSettingMode_ && !Input::isTouchEvent(event)
+        && event.gesture == Input::Gesture::ShortPressed) {
+        navigateBackInMenu(nowMs);
+        return true;
+    }
+
+    if (menuScreen_ == MenuScreen::Home && Input::hasControl(event.controls, Input::InputPrimary)
+        && event.gesture == Input::Gesture::ShortPressed) {
+        activateHomeSelection(nowMs);
+        return true;
+    }
+
     if (Input::isTouchEvent(event)) {
         if (menuScreen_ == MenuScreen::FocusTimerSession) {
             applyFocusTimerTouch(event, nowMs);
@@ -1429,6 +1487,9 @@ void App::reloadRuntimePreferences(uint32_t nowMs, bool rerender) {
     }
     phantomWordsEnabled_ = preferences_.getBool(kPrefPhantomWords, phantomWordsEnabled_);
     uiSoundsEnabled_ = preferences_.getBool(kPrefUiSounds, uiSoundsEnabled_);
+    uiVolumeIndex_ = preferences_.getUChar(kPrefUiVolume, uiVolumeIndex_) % kVolumeLevelCount;
+    passcode_ = preferences_.getString(kPrefPasscode, passcode_);
+    unlockToBookEnabled_ = preferences_.getBool(kPrefUnlockToBook, unlockToBookEnabled_);
     readerBatteryVisibleWhilePlaying_ =
         preferences_.getBool(kPrefReaderBatteryVisible, readerBatteryVisibleWhilePlaying_);
     readerChapterVisibleWhilePlaying_ =
@@ -1779,8 +1840,8 @@ void App::showLowBatteryWarning(uint32_t nowMs) {
 
     if (uiSoundsEnabled_) {
         // Descending two-note chirp so the warning is noticed face-down too.
-        Board::Audio::tone(880, 70, 8000);
-        Board::Audio::tone(587, 110, 8000);
+        Board::Audio::tone(880, 70, scaledToneAmplitude(8000));
+        Board::Audio::tone(587, 110, scaledToneAmplitude(8000));
     }
 
     const String line1 = String(static_cast<unsigned int>(batteryDisplayedPercent_)) + "% remaining";
@@ -2548,6 +2609,37 @@ bool App::navigateBackInMenu(uint32_t nowMs) {
         menuScreen_ = MenuScreen::Main;
         renderMainMenu();
         return true;
+
+    case MenuScreen::SettingsSound:
+        settingsSelectedIndex_ = Board::Config::ENABLE_RESTRUCTURED_MENU ? kSettingsHomeRestructuredSoundIndex
+                                                                         : kSettingsHomeSoundIndex;
+        menuScreen_ = MenuScreen::SettingsHome;
+        rebuildSettingsMenuItems();
+        renderSettings();
+        return true;
+
+    case MenuScreen::SettingsSecurity:
+        settingsSelectedIndex_ = Board::Config::ENABLE_RESTRUCTURED_MENU ? kSettingsHomeRestructuredSecurityIndex
+                                                                         : kSettingsHomeSecurityIndex;
+        menuScreen_ = MenuScreen::SettingsHome;
+        rebuildSettingsMenuItems();
+        renderSettings();
+        return true;
+
+    case MenuScreen::PasscodeEntry:
+        if (passcodeSettingMode_) {
+            passcodeSettingMode_ = false;
+            passcodeEntryBuffer_ = "";
+            menuScreen_ = MenuScreen::SettingsSecurity;
+            rebuildSettingsMenuItems();
+            renderSettings();
+        }
+        // Unlock mode has no back: the combo is the only way through.
+        return true;
+
+    case MenuScreen::Welcome:
+    case MenuScreen::Home:
+        return true;
     }
 
     return false;
@@ -2584,6 +2676,17 @@ void App::applyMenuTouchGesture(const TouchEvent& event, uint32_t nowMs) {
     const int deltaY = static_cast<int>(pausedTouch_.lastY) - static_cast<int>(pausedTouch_.startY);
     const int absDeltaX = abs(deltaX);
     const int absDeltaY = abs(deltaY);
+
+    // Passcode entry consumes all four swipe directions; the home screen has
+    // its own tap zones. Both are checked before swipe-right Back.
+    if (menuScreen_ == MenuScreen::PasscodeEntry) {
+        handlePasscodeSwipe(deltaX, deltaY, nowMs);
+        return;
+    }
+    if (menuScreen_ == MenuScreen::Home) {
+        handleHomeTouchRelease(event.x, deltaX, deltaY, nowMs);
+        return;
+    }
 
     if (MenuRepeat::isRightSwipe(deltaX, deltaY, kSwipeThresholdPx, kAxisBiasPx)) {
         navigateBackInMenu(nowMs);
@@ -3158,6 +3261,64 @@ void App::selectSettingsItem(uint32_t nowMs) {
         return;
     }
 
+    // Sound and Security screens share one layout across both menu structures.
+    if (menuScreen_ == MenuScreen::SettingsSound) {
+        switch (settingsSelectedIndex_) {
+        case kSettingsBackIndex:
+            settingsSelectedIndex_ = Board::Config::ENABLE_RESTRUCTURED_MENU ? kSettingsHomeRestructuredSoundIndex
+                                                                             : kSettingsHomeSoundIndex;
+            menuScreen_ = MenuScreen::SettingsHome;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        case kSettingsSoundToggleIndex:
+            toggleUiSounds();
+            return;
+        case kSettingsSoundVolumeIndex:
+            uiVolumeIndex_ = (uiVolumeIndex_ + 1) % kVolumeLevelCount;
+            preferences_.putUChar(kPrefUiVolume, uiVolumeIndex_);
+            playUiSound(UiSound::Select);
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        default:
+            return;
+        }
+    }
+
+    if (menuScreen_ == MenuScreen::SettingsSecurity) {
+        switch (settingsSelectedIndex_) {
+        case kSettingsBackIndex:
+            settingsSelectedIndex_ = Board::Config::ENABLE_RESTRUCTURED_MENU ? kSettingsHomeRestructuredSecurityIndex
+                                                                             : kSettingsHomeSecurityIndex;
+            menuScreen_ = MenuScreen::SettingsHome;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        case kSettingsSecurityPasscodeIndex:
+            passcodeSettingMode_ = true;
+            passcodeEntryBuffer_ = "";
+            menuScreen_ = MenuScreen::PasscodeEntry;
+            renderPasscodeScreen();
+            return;
+        case kSettingsSecurityClearIndex:
+            passcode_ = "";
+            preferences_.remove(kPrefPasscode);
+            playUiSound(UiSound::Back);
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        case kSettingsSecurityUnlockToBookIndex:
+            unlockToBookEnabled_ = !unlockToBookEnabled_;
+            preferences_.putBool(kPrefUnlockToBook, unlockToBookEnabled_);
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        default:
+            return;
+        }
+    }
+
     if (Board::Config::ENABLE_RESTRUCTURED_MENU) {
         selectRestructuredSettingsItem(nowMs);
         return;
@@ -3191,6 +3352,18 @@ void App::selectSettingsItem(uint32_t nowMs) {
             runFirmwareUpdate(preferredOtaConfig(), false, nowMs);
             return;
         }
+        case kSettingsHomeSoundIndex:
+            settingsSelectedIndex_ = kSettingsSoundToggleIndex;
+            menuScreen_ = MenuScreen::SettingsSound;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        case kSettingsHomeSecurityIndex:
+            settingsSelectedIndex_ = kSettingsSecurityPasscodeIndex;
+            menuScreen_ = MenuScreen::SettingsSecurity;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
         default:
             return;
         }
@@ -3303,9 +3476,6 @@ void App::selectSettingsItem(uint32_t nowMs) {
         case kSettingsDisplayLanguageIndex:
             cycleUiLanguage(nowMs);
             return;
-        case kSettingsDisplaySoundsIndex:
-            toggleUiSounds();
-            return;
         default:
             return;
         }
@@ -3417,6 +3587,18 @@ void App::selectRestructuredSettingsItem(uint32_t nowMs) {
         case kSettingsHomeRestructuredSdCardIndex:
             runSdCardCheck(nowMs);
             return;
+        case kSettingsHomeRestructuredSoundIndex:
+            settingsSelectedIndex_ = kSettingsSoundToggleIndex;
+            menuScreen_ = MenuScreen::SettingsSound;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        case kSettingsHomeRestructuredSecurityIndex:
+            settingsSelectedIndex_ = kSettingsSecurityPasscodeIndex;
+            menuScreen_ = MenuScreen::SettingsSecurity;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
         default:
             return;
         }
@@ -3523,9 +3705,6 @@ void App::selectRestructuredSettingsItem(uint32_t nowMs) {
             preferences_.putBool(kPrefReaderProgressVisible, readerProgressVisibleWhilePlaying_);
             rebuildSettingsMenuItems();
             renderSettings();
-            return;
-        case kSettingsDisplayRestructuredSoundsIndex:
-            toggleUiSounds();
             return;
         default:
             return;
@@ -4193,6 +4372,17 @@ void App::rebuildSettingsMenuItems() {
             settingsMenuItems_.push_back(firmwareUpdateMenuLabel());
             settingsMenuItems_.push_back("Installed: " + firmwareVersionLabel());
             settingsMenuItems_.push_back("SD card check");
+            settingsMenuItems_.push_back("Sound");
+            settingsMenuItems_.push_back("Security");
+        } else if (menuScreen_ == MenuScreen::SettingsSound) {
+            settingsMenuItems_.push_back(uiText(UiText::Back));
+            settingsMenuItems_.push_back("Sounds: " + onOffLabel(uiSoundsEnabled_));
+            settingsMenuItems_.push_back("Volume: " + volumeLabel());
+        } else if (menuScreen_ == MenuScreen::SettingsSecurity) {
+            settingsMenuItems_.push_back(uiText(UiText::Back));
+            settingsMenuItems_.push_back("Passcode: " + String(passcode_.isEmpty() ? "Not set" : "Set"));
+            settingsMenuItems_.push_back("Clear passcode");
+            settingsMenuItems_.push_back("Unlock to book: " + onOffLabel(unlockToBookEnabled_));
         } else if (menuScreen_ == MenuScreen::SettingsDisplay) {
             settingsMenuItems_.push_back(uiText(UiText::Back));
             settingsMenuItems_.push_back("Theme: " + themeModeLabel());
@@ -4206,7 +4396,6 @@ void App::rebuildSettingsMenuItems() {
             settingsMenuItems_.push_back("Reading battery: " + onOffLabel(readerBatteryVisibleWhilePlaying_));
             settingsMenuItems_.push_back("Reading chapter: " + onOffLabel(readerChapterVisibleWhilePlaying_));
             settingsMenuItems_.push_back("Reading progress: " + onOffLabel(readerProgressVisibleWhilePlaying_));
-            settingsMenuItems_.push_back("Sounds: " + onOffLabel(uiSoundsEnabled_));
         } else if (menuScreen_ == MenuScreen::SettingsPacing) {
             settingsMenuItems_.push_back(uiText(UiText::Back));
             settingsMenuItems_.push_back("Reading mode: " + readerModeLabel());
@@ -4244,6 +4433,17 @@ void App::rebuildSettingsMenuItems() {
         settingsMenuItems_.push_back("Wi-Fi");
         settingsMenuItems_.push_back(firmwareUpdateMenuLabel());
         settingsMenuItems_.push_back("Installed: " + firmwareVersionLabel());
+        settingsMenuItems_.push_back("Sound");
+        settingsMenuItems_.push_back("Security");
+    } else if (menuScreen_ == MenuScreen::SettingsSound) {
+        settingsMenuItems_.push_back(uiText(UiText::Back));
+        settingsMenuItems_.push_back("Sounds: " + onOffLabel(uiSoundsEnabled_));
+        settingsMenuItems_.push_back("Volume: " + volumeLabel());
+    } else if (menuScreen_ == MenuScreen::SettingsSecurity) {
+        settingsMenuItems_.push_back(uiText(UiText::Back));
+        settingsMenuItems_.push_back("Passcode: " + String(passcode_.isEmpty() ? "Not set" : "Set"));
+        settingsMenuItems_.push_back("Clear passcode");
+        settingsMenuItems_.push_back("Unlock to book: " + onOffLabel(unlockToBookEnabled_));
     } else if (menuScreen_ == MenuScreen::SettingsDisplay) {
         settingsMenuItems_.push_back(uiText(UiText::Back));
         settingsMenuItems_.push_back("Display mode: " + themeModeLabel());
@@ -4257,7 +4457,6 @@ void App::rebuildSettingsMenuItems() {
         settingsMenuItems_.push_back("Reading chapter: " + onOffLabel(readerChapterVisibleWhilePlaying_));
         settingsMenuItems_.push_back("Reading percent: " + onOffLabel(readerProgressVisibleWhilePlaying_));
         settingsMenuItems_.push_back(uiText(UiText::Language) + ": " + uiLanguageLabel());
-        settingsMenuItems_.push_back("Sounds: " + onOffLabel(uiSoundsEnabled_));
     } else if (menuScreen_ == MenuScreen::SettingsPacing) {
         settingsMenuItems_.push_back(uiText(UiText::Back));
         settingsMenuItems_.push_back("Reading mode: " + readerModeLabel());
@@ -5831,6 +6030,10 @@ bool App::readReadingPositionSidecar(uint32_t& wordIndex) {
 }
 
 bool App::loadBookAtIndex(size_t index, uint32_t nowMs, const BookOpenOptions& options) {
+    // Any explicit load supersedes the deferred boot-book load (e.g. picking a
+    // different book from the home screen before the reader was ever shown).
+    pendingBootBookLoad_ = false;
+
     BookMetadata book;
     String loadedPath;
     size_t loadedIndex = index;
@@ -6079,6 +6282,12 @@ void App::renderMenu() {
         renderFocusTimerGenres();
     } else if (menuScreen_ == MenuScreen::FocusTimerSession) {
         renderFocusTimerSession();
+    } else if (menuScreen_ == MenuScreen::Welcome) {
+        renderWelcomeScreen();
+    } else if (menuScreen_ == MenuScreen::Home) {
+        display_.renderHomeScreen(homeSelectedIndex_ < 2 ? homeSelectedIndex_ : 0);
+    } else if (menuScreen_ == MenuScreen::PasscodeEntry) {
+        renderPasscodeScreen();
     } else {
         renderMainMenu();
     }
@@ -6882,6 +7091,12 @@ void App::playFocusTimerCompletionCue() {
     display_.flashBacklight(3, 55, 45);
 }
 
+int16_t App::scaledToneAmplitude(int16_t baseAmplitude) const {
+    const int32_t scaled =
+        (static_cast<int32_t>(baseAmplitude) * kVolumeLevelQuarters[uiVolumeIndex_ % kVolumeLevelCount]) / 4;
+    return static_cast<int16_t>(std::min<int32_t>(scaled, 28000));
+}
+
 void App::playUiSound(UiSound sound) {
     if (!uiSoundsEnabled_) {
         return;
@@ -6889,23 +7104,172 @@ void App::playUiSound(UiSound sound) {
 
     switch (sound) {
     case UiSound::Click:
-        Board::Audio::tone(2100, 14, 3500);
+        Board::Audio::tone(2100, 14, scaledToneAmplitude(3500));
         break;
     case UiSound::Select:
-        Board::Audio::tone(1600, 32, 6000);
+        Board::Audio::tone(1600, 32, scaledToneAmplitude(6000));
         break;
     case UiSound::Back:
-        Board::Audio::tone(950, 32, 6000);
+        Board::Audio::tone(950, 32, scaledToneAmplitude(6000));
         break;
     case UiSound::Play:
-        Board::Audio::tone(1100, 30, 7000);
-        Board::Audio::tone(1650, 45, 7000);
+        Board::Audio::tone(1100, 30, scaledToneAmplitude(7000));
+        Board::Audio::tone(1650, 45, scaledToneAmplitude(7000));
         break;
     case UiSound::Pause:
-        Board::Audio::tone(1650, 30, 7000);
-        Board::Audio::tone(1100, 45, 7000);
+        Board::Audio::tone(1650, 30, scaledToneAmplitude(7000));
+        Board::Audio::tone(1100, 45, scaledToneAmplitude(7000));
         break;
     }
+}
+
+String App::volumeLabel() const {
+    return kVolumeLevelLabels[uiVolumeIndex_ % kVolumeLevelCount];
+}
+
+void App::renderWelcomeScreen() {
+    display_.renderStatus(kWelcomeTitle, "",
+                          passcode_.isEmpty() ? "Press to open" : "Press to unlock");
+}
+
+void App::renderPasscodeScreen(const String& statusLine) {
+    const size_t targetLength =
+        passcodeSettingMode_ ? kPasscodeLength : std::max<size_t>(passcode_.length(), 1);
+    String progress;
+    for (size_t i = 0; i < targetLength; ++i) {
+        if (i > 0) {
+            progress += ' ';
+        }
+        if (i < passcodeEntryBuffer_.length()) {
+            progress += passcodeSettingMode_ ? passcodeEntryBuffer_[i] : '*';
+        } else {
+            progress += '_';
+        }
+    }
+
+    const String title = passcodeSettingMode_ ? "SET PASSCODE" : "LOCKED";
+    const String hint = statusLine.isEmpty() ? String("Swipe up/down/left/right") : statusLine;
+    display_.renderStatus(title, progress, hint);
+}
+
+void App::advanceFromWelcome(uint32_t nowMs) {
+    if (passcode_.isEmpty()) {
+        finishBootUnlock(nowMs);
+        return;
+    }
+
+    playUiSound(UiSound::Click);
+    passcodeSettingMode_ = false;
+    passcodeEntryBuffer_ = "";
+    menuScreen_ = MenuScreen::PasscodeEntry;
+    renderPasscodeScreen();
+}
+
+void App::finishBootUnlock(uint32_t nowMs) {
+    playUiSound(UiSound::Select);
+    passcodeEntryBuffer_ = "";
+
+    const bool hasLibrary = storageReady_ && storage_.bookCount() > 0;
+    if (!hasLibrary) {
+        // Nothing on the card: land in the reader with the demo text, as before.
+        setState(AppState::Paused, nowMs);
+        return;
+    }
+
+    if (unlockToBookEnabled_ && (pendingBootBookLoad_ || usingStorageBook_)) {
+        setState(AppState::Paused, nowMs);
+        return;
+    }
+
+    openHomeScreen(nowMs);
+}
+
+void App::openHomeScreen(uint32_t nowMs) {
+    homeSelectedIndex_ = 0;
+    menuScreen_ = MenuScreen::Home;
+    if (state_ != AppState::Menu) {
+        setState(AppState::Menu, nowMs);
+    } else {
+        renderMenu();
+    }
+}
+
+void App::activateHomeSelection(uint32_t nowMs) {
+    (void) nowMs;
+    playUiSound(UiSound::Select);
+    if (homeSelectedIndex_ == 0) {
+        openBookPicker(false);
+        return;
+    }
+    if (Board::Config::ENABLE_RESTRUCTURED_MENU) {
+        openArticlesMenu();
+    } else {
+        openBookPicker(true);
+    }
+}
+
+void App::handleHomeTouchRelease(uint16_t x, int deltaX, int deltaY, uint32_t nowMs) {
+    const int absDeltaX = abs(deltaX);
+    const int absDeltaY = abs(deltaY);
+    if (absDeltaX <= static_cast<int>(kTapSlopPx) && absDeltaY <= static_cast<int>(kTapSlopPx)) {
+        homeSelectedIndex_ = x < Board::Config::DISPLAY_WIDTH / 2 ? 0 : 1;
+        activateHomeSelection(nowMs);
+        return;
+    }
+
+    if (absDeltaX >= static_cast<int>(kSwipeThresholdPx)
+        && absDeltaX > absDeltaY + static_cast<int>(kAxisBiasPx)) {
+        homeSelectedIndex_ = homeSelectedIndex_ == 0 ? 1 : 0;
+        playUiSound(UiSound::Click);
+        renderMenu();
+    }
+}
+
+void App::handlePasscodeSwipe(int deltaX, int deltaY, uint32_t nowMs) {
+    const int absDeltaX = abs(deltaX);
+    const int absDeltaY = abs(deltaY);
+    char direction = 0;
+    if (absDeltaX >= static_cast<int>(kSwipeThresholdPx)
+        && absDeltaX > absDeltaY + static_cast<int>(kAxisBiasPx)) {
+        direction = deltaX > 0 ? 'R' : 'L';
+    } else if (absDeltaY >= static_cast<int>(kSwipeThresholdPx)
+               && absDeltaY > absDeltaX + static_cast<int>(kAxisBiasPx)) {
+        direction = deltaY > 0 ? 'D' : 'U';
+    }
+    if (direction == 0) {
+        return;
+    }
+
+    playUiSound(UiSound::Click);
+    passcodeEntryBuffer_ += direction;
+
+    if (passcodeSettingMode_) {
+        if (passcodeEntryBuffer_.length() >= kPasscodeLength) {
+            passcode_ = passcodeEntryBuffer_;
+            preferences_.putString(kPrefPasscode, passcode_);
+            passcodeEntryBuffer_ = "";
+            passcodeSettingMode_ = false;
+            playUiSound(UiSound::Select);
+            menuScreen_ = MenuScreen::SettingsSecurity;
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
+        }
+        renderPasscodeScreen();
+        return;
+    }
+
+    if (passcodeEntryBuffer_.length() >= passcode_.length()) {
+        if (passcodeEntryBuffer_ == passcode_) {
+            finishBootUnlock(nowMs);
+            return;
+        }
+        passcodeEntryBuffer_ = "";
+        playUiSound(UiSound::Back);
+        renderPasscodeScreen("Wrong combo, try again");
+        return;
+    }
+    renderPasscodeScreen();
 }
 
 void App::toggleUiSounds() {
