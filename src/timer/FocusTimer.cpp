@@ -168,6 +168,13 @@ void FocusTimer::abandon() {
 
 bool FocusTimer::available() const { return imuAvailable_; }
 
+bool FocusTimer::readMotionSample(float &x, float &y, float &z) {
+  if (!imuAvailable_) {
+    return false;
+  }
+  return readAccelerometer(x, y, z);
+}
+
 bool FocusTimer::isActiveTimerRunning() const { return timerRunning_; }
 
 FocusTimer::State FocusTimer::state() const { return state_; }

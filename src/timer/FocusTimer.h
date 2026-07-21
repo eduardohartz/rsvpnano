@@ -46,6 +46,8 @@ class FocusTimer {
   void abandon();
 
   bool available() const;
+  // Raw accelerometer sample in g units for motion features (raise-to-wake).
+  bool readMotionSample(float &x, float &y, float &z);
   bool isActiveTimerRunning() const;
   State state() const;
   Genre genre() const;

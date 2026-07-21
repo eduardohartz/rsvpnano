@@ -66,6 +66,9 @@ class DisplayManager {
   void setDarkMode(bool darkMode);
   void setNightMode(bool nightMode);
   void setUiOrientation(Board::UiOrientation orientation);
+  // Bionic-style emphasis in continuous text views: the first ~40% of each
+  // word renders bold to give the eye a fixation anchor.
+  void setBionicEnabled(bool enabled);
   void setUiRotated180(bool rotated180);
   void setTypographyConfig(const TypographyConfig &config);
   TypographyConfig typographyConfig() const;
@@ -206,6 +209,7 @@ class DisplayManager {
   uint8_t brightnessPercent_ = 100;
   bool darkMode_ = true;
   bool nightMode_ = false;
+  bool bionicEnabled_ = false;
   Board::UiOrientation uiOrientation_ = Board::UiOrientation::Landscape;
   bool tickerPlaybackFrameActive_ = false;
   String lastRenderKey_;

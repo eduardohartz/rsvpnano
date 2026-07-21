@@ -157,6 +157,19 @@ void mapPhysicalToLogical(Board::UiOrientation orientation, int physicalX, int p
   }
 }
 
+// First ~40% of a word (UTF-8 safe) gets the bionic bold treatment.
+size_t bionicPrefixLength(const String &word) {
+  const size_t length = word.length();
+  if (length <= 1) {
+    return length;
+  }
+  size_t split = length <= 3 ? 1 : (length * 2 + 4) / 5;
+  while (split < length && (static_cast<uint8_t>(word[split]) & 0xC0) == 0x80) {
+    ++split;
+  }
+  return split;
+}
+
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return static_cast<uint16_t>(((r & 0xF8U) << 8) | ((g & 0xFCU) << 3) | (b >> 3));
 }
@@ -921,6 +934,13 @@ void DisplayManager::setNightMode(bool nightMode) {
   nightMode_ = nightMode;
   tickerPlaybackFrameActive_ = false;
   lastRenderKey_ = "";
+}
+
+void DisplayManager::setBionicEnabled(bool enabled) {
+  if (bionicEnabled_ != enabled) {
+    bionicEnabled_ = enabled;
+    lastRenderKey_ = "";
+  }
 }
 
 void DisplayManager::setUiOrientation(Board::UiOrientation orientation) {
@@ -2659,7 +2679,20 @@ void DisplayManager::renderScrollView(const std::vector<ContextWord> &words, uin
           (word.current && currentFocusHighlightEnabled()) ? focusColor() : wordColor();
       const String visibleWord =
           fitSerifText(word.text, virtualWidth - x - kScrollMarginX, kScrollSerifDivisor);
-      drawSerifTextAt(visibleWord, x, lineY, color, kScrollSerifDivisor);
+      if (bionicEnabled_ && visibleWord.length() > 1) {
+        const size_t split = bionicPrefixLength(visibleWord);
+        const String head = visibleWord.substring(0, split);
+        const String tail = visibleWord.substring(split);
+        // Faux bold: double-strike the fixation prefix one pixel apart.
+        drawSerifTextAt(head, x, lineY, color, kScrollSerifDivisor);
+        drawSerifTextAt(head, x + 1, lineY, color, kScrollSerifDivisor);
+        if (!tail.isEmpty()) {
+          drawSerifTextAt(tail, x + measureSerifTextWidth(head, kScrollSerifDivisor), lineY, color,
+                          kScrollSerifDivisor);
+        }
+      } else {
+        drawSerifTextAt(visibleWord, x, lineY, color, kScrollSerifDivisor);
+      }
       x += measureSerifTextWidth(visibleWord, kScrollSerifDivisor) + kScrollSpaceWidth;
     }
   }

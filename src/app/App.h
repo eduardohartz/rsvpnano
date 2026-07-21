@@ -246,6 +246,7 @@ private:
     ScreensaverMode effectiveScreensaverMode() const;
     String volumeLabel() const;
     int16_t scaledToneAmplitude(int16_t baseAmplitude) const;
+    void maybeRaiseToWake(uint32_t nowMs);
     void advanceFromWelcome(uint32_t nowMs);
     void finishBootUnlock(uint32_t nowMs);
     void openHomeScreen(uint32_t nowMs);
@@ -626,6 +627,16 @@ private:
     // Touch-hold on the sync screen exits companion sync.
     uint32_t syncTouchHoldStartMs_ = 0;
     bool syncTouchHoldActive_ = false;
+    // Raise-to-wake motion tracking while in standby.
+    bool raiseToWakeEnabled_ = true;
+    bool motionBaselineValid_ = false;
+    float motionBaselineX_ = 0.0f;
+    float motionBaselineY_ = 0.0f;
+    float motionBaselineZ_ = 0.0f;
+    uint32_t lastMotionSampleMs_ = 0;
+    uint32_t motionSettleUntilMs_ = 0;
+    uint8_t motionTriggerStreak_ = 0;
+    bool bionicTextEnabled_ = false;
     // Reading statistics (lifetime totals persisted; pending counters flushed on pause).
     uint32_t totalWordsRead_ = 0;
     uint32_t totalReadingSec_ = 0;

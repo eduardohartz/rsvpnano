@@ -239,6 +239,10 @@ namespace {
     constexpr size_t kSettingsPacingRestructuredResetIndex = 6;
     constexpr size_t kSettingsPacingSleepTimerIndex = 8;
     constexpr size_t kSettingsPacingRestructuredSleepTimerIndex = 7;
+    constexpr size_t kSettingsPacingBionicIndex = 9;
+    constexpr size_t kSettingsPacingRestructuredBionicIndex = 8;
+    constexpr size_t kSettingsDisplayRaiseWakeIndex = 12;
+    constexpr size_t kSettingsDisplayRestructuredRaiseWakeIndex = 12;
     constexpr size_t kSettingsHomeSoundIndex = 7;
     constexpr size_t kSettingsHomeSecurityIndex = 8;
     constexpr size_t kSettingsHomeRestructuredSoundIndex = 8;
@@ -316,6 +320,14 @@ namespace {
     constexpr int32_t kVolumeLevelPercent[kVolumeLevelCount] = {4, 10, 33, 100, 250};
     constexpr const char* kWelcomeTitle = "Eduardo's E-Reader";
     constexpr uint32_t kSyncExitHoldMs = 1200;
+    constexpr const char* kPrefRaiseToWake = "raise_wake";
+    constexpr const char* kPrefBionicText = "bionic";
+    // Raise-to-wake: sample the accelerometer in standby and wake on a
+    // sustained delta against a slowly-tracking gravity baseline.
+    constexpr uint32_t kMotionSampleIntervalMs = 150;
+    constexpr uint32_t kMotionSettleMs = 1500;
+    constexpr float kRaiseWakeDeltaSq = 0.06f;
+    constexpr uint8_t kRaiseWakeTriggerSamples = 2;
     constexpr const char* kPrefStatWords = "st_words";
     constexpr const char* kPrefStatSeconds = "st_sec";
     constexpr const char* kPrefSleepTimer = "slp_tmr";
@@ -690,6 +702,9 @@ void App::begin() {
     phantomWordsEnabled_ = preferences_.getBool(kPrefPhantomWords, phantomWordsEnabled_);
     uiSoundsEnabled_ = preferences_.getBool(kPrefUiSounds, uiSoundsEnabled_);
     uiVolumeIndex_ = preferences_.getUChar(kPrefUiVolume, uiVolumeIndex_) % kVolumeLevelCount;
+    raiseToWakeEnabled_ = preferences_.getBool(kPrefRaiseToWake, raiseToWakeEnabled_);
+    bionicTextEnabled_ = preferences_.getBool(kPrefBionicText, bionicTextEnabled_);
+    display_.setBionicEnabled(bionicTextEnabled_);
     passcode_ = preferences_.getString(kPrefPasscode, passcode_);
     unlockToBookEnabled_ = preferences_.getBool(kPrefUnlockToBook, unlockToBookEnabled_);
     readerBatteryVisibleWhilePlaying_ =
@@ -879,6 +894,10 @@ void App::update(uint32_t nowMs) {
     }
 
     if (state_ == AppState::Standby) {
+        maybeRaiseToWake(nowMs);
+        if (state_ != AppState::Standby) {
+            return;
+        }
         updateStandbyScreensaver(nowMs);
         if (nowMs - lastStateLogMs_ > 1500) {
             lastStateLogMs_ = nowMs;
@@ -1505,6 +1524,9 @@ void App::reloadRuntimePreferences(uint32_t nowMs, bool rerender) {
     phantomWordsEnabled_ = preferences_.getBool(kPrefPhantomWords, phantomWordsEnabled_);
     uiSoundsEnabled_ = preferences_.getBool(kPrefUiSounds, uiSoundsEnabled_);
     uiVolumeIndex_ = preferences_.getUChar(kPrefUiVolume, uiVolumeIndex_) % kVolumeLevelCount;
+    raiseToWakeEnabled_ = preferences_.getBool(kPrefRaiseToWake, raiseToWakeEnabled_);
+    bionicTextEnabled_ = preferences_.getBool(kPrefBionicText, bionicTextEnabled_);
+    display_.setBionicEnabled(bionicTextEnabled_);
     passcode_ = preferences_.getString(kPrefPasscode, passcode_);
     unlockToBookEnabled_ = preferences_.getBool(kPrefUnlockToBook, unlockToBookEnabled_);
     readerBatteryVisibleWhilePlaying_ =
@@ -3493,6 +3515,12 @@ void App::selectSettingsItem(uint32_t nowMs) {
         case kSettingsDisplayLanguageIndex:
             cycleUiLanguage(nowMs);
             return;
+        case kSettingsDisplayRaiseWakeIndex:
+            raiseToWakeEnabled_ = !raiseToWakeEnabled_;
+            preferences_.putBool(kPrefRaiseToWake, raiseToWakeEnabled_);
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
         default:
             return;
         }
@@ -3559,6 +3587,11 @@ void App::selectSettingsItem(uint32_t nowMs) {
     case kSettingsPacingSleepTimerIndex:
         sleepTimerIndex_ = (sleepTimerIndex_ + 1) % kSleepTimerOptionCount;
         preferences_.putUChar(kPrefSleepTimer, sleepTimerIndex_);
+        break;
+    case kSettingsPacingBionicIndex:
+        bionicTextEnabled_ = !bionicTextEnabled_;
+        preferences_.putBool(kPrefBionicText, bionicTextEnabled_);
+        display_.setBionicEnabled(bionicTextEnabled_);
         break;
     default:
         return;
@@ -3723,6 +3756,12 @@ void App::selectRestructuredSettingsItem(uint32_t nowMs) {
             rebuildSettingsMenuItems();
             renderSettings();
             return;
+        case kSettingsDisplayRestructuredRaiseWakeIndex:
+            raiseToWakeEnabled_ = !raiseToWakeEnabled_;
+            preferences_.putBool(kPrefRaiseToWake, raiseToWakeEnabled_);
+            rebuildSettingsMenuItems();
+            renderSettings();
+            return;
         default:
             return;
         }
@@ -3780,6 +3819,11 @@ void App::selectRestructuredSettingsItem(uint32_t nowMs) {
         case kSettingsPacingRestructuredSleepTimerIndex:
             sleepTimerIndex_ = (sleepTimerIndex_ + 1) % kSleepTimerOptionCount;
             preferences_.putUChar(kPrefSleepTimer, sleepTimerIndex_);
+            break;
+        case kSettingsPacingRestructuredBionicIndex:
+            bionicTextEnabled_ = !bionicTextEnabled_;
+            preferences_.putBool(kPrefBionicText, bionicTextEnabled_);
+            display_.setBionicEnabled(bionicTextEnabled_);
             break;
         default:
             return;
@@ -4413,6 +4457,7 @@ void App::rebuildSettingsMenuItems() {
             settingsMenuItems_.push_back("Reading battery: " + onOffLabel(readerBatteryVisibleWhilePlaying_));
             settingsMenuItems_.push_back("Reading chapter: " + onOffLabel(readerChapterVisibleWhilePlaying_));
             settingsMenuItems_.push_back("Reading progress: " + onOffLabel(readerProgressVisibleWhilePlaying_));
+            settingsMenuItems_.push_back("Raise to wake: " + onOffLabel(raiseToWakeEnabled_));
         } else if (menuScreen_ == MenuScreen::SettingsPacing) {
             settingsMenuItems_.push_back(uiText(UiText::Back));
             settingsMenuItems_.push_back("Reading mode: " + readerModeLabel());
@@ -4424,6 +4469,7 @@ void App::rebuildSettingsMenuItems() {
                                          + pacingDelayLabel(pacingPunctuationDelayMs_));
             settingsMenuItems_.push_back(uiText(UiText::ResetPacing));
             settingsMenuItems_.push_back("Sleep timer: " + sleepTimerLabel());
+            settingsMenuItems_.push_back("Bionic text: " + onOffLabel(bionicTextEnabled_));
         } else if (menuScreen_ == MenuScreen::WifiSettings) {
             settingsMenuItems_.push_back(uiText(UiText::Back));
             settingsMenuItems_.push_back("Network: " + storedOrFallbackLabel(configuredWifiSsid(), "Not set"));
@@ -4474,6 +4520,7 @@ void App::rebuildSettingsMenuItems() {
         settingsMenuItems_.push_back("Reading chapter: " + onOffLabel(readerChapterVisibleWhilePlaying_));
         settingsMenuItems_.push_back("Reading percent: " + onOffLabel(readerProgressVisibleWhilePlaying_));
         settingsMenuItems_.push_back(uiText(UiText::Language) + ": " + uiLanguageLabel());
+        settingsMenuItems_.push_back("Raise to wake: " + onOffLabel(raiseToWakeEnabled_));
     } else if (menuScreen_ == MenuScreen::SettingsPacing) {
         settingsMenuItems_.push_back(uiText(UiText::Back));
         settingsMenuItems_.push_back("Reading mode: " + readerModeLabel());
@@ -4484,6 +4531,7 @@ void App::rebuildSettingsMenuItems() {
         settingsMenuItems_.push_back(uiText(UiText::Punctuation) + ": " + pacingDelayLabel(pacingPunctuationDelayMs_));
         settingsMenuItems_.push_back(uiText(UiText::ResetPacing));
         settingsMenuItems_.push_back("Sleep timer: " + sleepTimerLabel());
+        settingsMenuItems_.push_back("Bionic text: " + onOffLabel(bionicTextEnabled_));
     } else if (menuScreen_ == MenuScreen::WifiSettings) {
         settingsMenuItems_.push_back(uiText(UiText::Back));
         settingsMenuItems_.push_back("Network: " + storedOrFallbackLabel(configuredWifiSsid(), "Not set"));
@@ -5375,6 +5423,9 @@ void App::enterStandby(uint32_t nowMs) {
     batteryWarningOverlayVisible_ = false;
     standbyEnteredMs_ = nowMs;
     lastStandbyFrameMs_ = 0;
+    motionBaselineValid_ = false;
+    motionTriggerStreak_ = 0;
+    motionSettleUntilMs_ = nowMs + kMotionSettleMs;
     setState(AppState::Standby, nowMs);
     Serial.println("[app] standby screensaver started");
 }
@@ -7176,6 +7227,58 @@ void App::renderPasscodeScreen(const String& statusLine) {
     const String title = passcodeSettingMode_ ? "SET PASSCODE" : "LOCKED";
     const String hint = statusLine.isEmpty() ? String("Swipe up/down/left/right") : statusLine;
     display_.renderStatus(title, progress, hint);
+}
+
+void App::maybeRaiseToWake(uint32_t nowMs) {
+    if (!raiseToWakeEnabled_ || !focusTimer_.available()) {
+        return;
+    }
+    if (nowMs - lastMotionSampleMs_ < kMotionSampleIntervalMs) {
+        return;
+    }
+    lastMotionSampleMs_ = nowMs;
+
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    if (!focusTimer_.readMotionSample(x, y, z)) {
+        return;
+    }
+
+    if (!motionBaselineValid_) {
+        motionBaselineX_ = x;
+        motionBaselineY_ = y;
+        motionBaselineZ_ = z;
+        motionBaselineValid_ = true;
+        return;
+    }
+
+    const float dx = x - motionBaselineX_;
+    const float dy = y - motionBaselineY_;
+    const float dz = z - motionBaselineZ_;
+    const float deltaSq = dx * dx + dy * dy + dz * dz;
+
+    // Track gravity slowly so a new resting pose stops counting as motion.
+    motionBaselineX_ += dx * 0.2f;
+    motionBaselineY_ += dy * 0.2f;
+    motionBaselineZ_ += dz * 0.2f;
+
+    if (nowMs < motionSettleUntilMs_) {
+        return;
+    }
+
+    if (deltaSq < kRaiseWakeDeltaSq) {
+        motionTriggerStreak_ = 0;
+        return;
+    }
+
+    if (++motionTriggerStreak_ < kRaiseWakeTriggerSamples) {
+        return;
+    }
+
+    motionTriggerStreak_ = 0;
+    Serial.printf("[app] raise-to-wake delta=%.3f\n", static_cast<double>(deltaSq));
+    exitStandby(nowMs);
 }
 
 void App::advanceFromWelcome(uint32_t nowMs) {

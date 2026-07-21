@@ -38,6 +38,8 @@ constexpr const char *kPrefUiSounds = "ui_snd";
 constexpr const char *kPrefUiVolume = "ui_vol";
 constexpr const char *kPrefPasscode = "passcd";
 constexpr const char *kPrefUnlockToBook = "unlk_book";
+constexpr const char *kPrefRaiseToWake = "raise_wake";
+constexpr const char *kPrefBionicText = "bionic";
 
 // Typography.
 constexpr const char *kPrefTypographyFocusHighlight = "type_hlt";
