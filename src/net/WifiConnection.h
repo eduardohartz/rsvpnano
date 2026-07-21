@@ -10,6 +10,9 @@
 // module; the timeout policy now lives here in one place.
 namespace net {
 
+// Network hostname the device announces over DHCP in station and AP modes.
+constexpr const char *kDeviceHostname = "ereader.eduardohartz.dev";
+
 // Reports association progress as a percentage in [0, 100] while connecting.
 using WifiProgress = std::function<void(int percent)>;
 

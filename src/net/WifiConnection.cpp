@@ -13,6 +13,7 @@ constexpr uint32_t kWifiConnectPollMs = 250;
 bool connectStation(const String &ssid, const String &password, const WifiProgress &progress) {
   WiFi.persistent(false);
   WiFi.setAutoReconnect(false);
+  WiFi.setHostname(kDeviceHostname);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid.c_str(), password.c_str());
 

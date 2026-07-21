@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <vector>
 
+#include "net/WifiConnection.h"
 #include "settings/PreferenceKeys.h"
 #include "storage/fs/StorageFiles.h"
 #include "storage/fs/StoragePaths.h"
@@ -680,6 +681,7 @@ bool CompanionSyncManager::startAccessPoint() {
   statusLine2_ = ssid;
   networkSsid_ = ssid;
   WiFi.mode(WIFI_AP);
+  WiFi.softAPsetHostname(net::kDeviceHostname);
   if (!WiFi.softAP(ssid.c_str())) {
     Serial.println("[sync] softAP failed");
     return false;
