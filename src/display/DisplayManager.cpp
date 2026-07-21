@@ -2500,7 +2500,8 @@ void DisplayManager::renderScrollView(const std::vector<ContextWord> &words, uin
                                       uint16_t scrollProgressPermille,
                                       const String &chapterLabel, uint8_t progressPercent,
                                       const String &overlayText,
-                                      const String &footerStatusLabel, ReaderChrome chrome) {
+                                      const String &footerStatusLabel, ReaderChrome chrome,
+                                      const ProgressTicks *ticks) {
   if (words.empty()) {
     renderRsvpWord("", chapterLabel, progressPercent, true, footerStatusLabel, chrome);
     return;
@@ -2631,7 +2632,8 @@ void DisplayManager::renderScrollView(const std::vector<ContextWord> &words, uin
       String(currentWordIndex) + "|" + String(words.size()) + "|" + String(scrollOffset) +
       "|" + chapterLabel + "|" + String(progressPercent) + "|o:" + overlayText + "|f:" +
       footerStatusLabel + "|b:" + batteryLabel_ + "|rc:" + readerChromeKey(chrome) + "|d:" +
-      String(darkMode_ ? 1 : 0) + "|n:" + String(nightMode_ ? 1 : 0);
+      String(darkMode_ ? 1 : 0) + "|n:" + String(nightMode_ ? 1 : 0) + "|tk:" +
+      (ticks != nullptr ? String(ticks->progressPermille) : String("-"));
   if (!initialized_ || renderKey == lastRenderKey_) {
     return;
   }
@@ -2666,6 +2668,37 @@ void DisplayManager::renderScrollView(const std::vector<ContextWord> &words, uin
     const int overlayY = textBottom + 8;
     drawTinyTextCentered(fitTinyText(overlayText, virtualWidth - 24, kTinyScale), overlayY,
                          focusColor(), kTinyScale);
+  }
+
+  if (ticks != nullptr && overlayText.isEmpty()) {
+    const int trackY = textBottom + 2;
+    const int trackX0 = kScrollMarginX;
+    const int trackWidth = virtualWidth - (kScrollMarginX * 2);
+    if (trackWidth > 8 && trackY + 6 < virtualHeight) {
+      auto fillRect = [&](int x0, int y0, int width, int height, uint16_t color) {
+        const uint16_t panel = panelColor(color);
+        for (int py = y0; py < y0 + height; ++py) {
+          if (py < 0 || py >= kVirtualBufferHeight) {
+            continue;
+          }
+          for (int px = x0; px < x0 + width; ++px) {
+            if (px < 0 || px >= kVirtualBufferWidth) {
+              continue;
+            }
+            virtualFrame_[py * kVirtualBufferWidth + px] = panel;
+          }
+        }
+      };
+
+      fillRect(trackX0, trackY + 2, trackWidth, 2, dimColor());
+      const int progressWidth =
+          (trackWidth * std::min<uint16_t>(ticks->progressPermille, 1000)) / 1000;
+      fillRect(trackX0, trackY + 2, progressWidth, 2, focusColor());
+      for (const uint16_t tickPermille : ticks->tickPermille) {
+        const int tickX = trackX0 + (trackWidth * std::min<uint16_t>(tickPermille, 1000)) / 1000;
+        fillRect(tickX, trackY, 2, 6, wordColor());
+      }
+    }
   }
 
   drawFooter(chapterLabel, footerStatusLabel.isEmpty() ? String(progressPercent) + "%"

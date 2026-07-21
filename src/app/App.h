@@ -65,11 +65,14 @@ private:
         uint16_t startY = 0;
         uint16_t lastX = 0;
         uint16_t lastY = 0;
+        uint16_t prevY = 0;
         uint32_t startMs = 0;
         uint32_t lastMs = 0;
+        uint32_t prevMs = 0;
         size_t startWordIndex = 0;
         int gestureStepsApplied = 0;
         int32_t browseOffsetPermille = 0;
+        uint16_t browseAnchorY = 0;
     };
 
     enum class TouchIntent {
@@ -106,6 +109,7 @@ private:
         Percentage = 0,
         ChapterTime = 1,
         BookTime = 2,
+        Stats = 3,
     };
 
     enum class BatteryLabelMode : uint8_t {
@@ -227,9 +231,15 @@ private:
     String readerFooterStatusLabel() const;
     String onOffLabel(bool enabled) const;
     int scrubStepsForDrag(int deltaX) const;
-    void applyScrubTarget(int targetSteps, uint32_t nowMs);
-    int browseScrollRatePermille(uint16_t y) const;
-    void applyBrowseHoldScroll(uint16_t y, uint32_t elapsedMs, uint32_t nowMs);
+    void applyScrubTarget(int targetSteps, uint32_t nowMs, bool forceRender);
+    bool navigateBackInMenu(uint32_t nowMs);
+    void applyBrowseOffset(uint32_t nowMs, bool forceRender);
+    void updateBrowseMomentum(uint32_t nowMs);
+    void flushReadingStats();
+    String readingStatsLabel() const;
+    String sleepTimerLabel() const;
+    ScreensaverMode effectiveScreensaverMode() const;
+    void applyBrowseDragScroll(uint16_t y, uint32_t nowMs, bool forceRender);
     void renderContextBrowsePreview(size_t currentIndex, uint16_t scrollProgressPermille);
     void applyMenuTouchGesture(const TouchEvent& event, uint32_t nowMs);
     void applyFocusTimerTouch(const TouchEvent& event, uint32_t nowMs);
@@ -443,6 +453,16 @@ private:
     String focusTimerCountsLabel() const;
     void playFocusTimerCompletionCue();
 
+    enum class UiSound : uint8_t {
+        Click,
+        Select,
+        Back,
+        Play,
+        Pause,
+    };
+    void playUiSound(UiSound sound);
+    void toggleUiSounds();
+
     AppState state_ = AppState::Booting;
     AppState standbyReturnState_ = AppState::Paused;
     DisplayManager display_;
@@ -466,6 +486,8 @@ private:
     uint32_t lastBatterySampleMs_ = 0;
     uint32_t batteryRuntimeAnchorMs_ = 0;
     uint32_t lastScrollAnimationRenderMs_ = 0;
+    uint32_t lastBrowsePreviewRenderMs_ = 0;
+    bool scrubRenderPending_ = false;
     uint32_t lastCompanionSyncRenderMs_ = 0;
     uint32_t lastReaderTapMs_ = 0;
     uint32_t standbyEnteredMs_ = 0;
@@ -577,6 +599,22 @@ private:
     bool readerBatteryVisibleWhilePlaying_ = true;
     bool readerChapterVisibleWhilePlaying_ = false;
     bool readerProgressVisibleWhilePlaying_ = false;
+    bool uiSoundsEnabled_ = true;
+    // Reading statistics (lifetime totals persisted; pending counters flushed on pause).
+    uint32_t totalWordsRead_ = 0;
+    uint32_t totalReadingSec_ = 0;
+    uint32_t pendingStatsWords_ = 0;
+    uint32_t pendingStatsMs_ = 0;
+    uint32_t lastReadingTickMs_ = 0;
+    // Sleep timer: pauses playback after a configured stretch of reading.
+    uint8_t sleepTimerIndex_ = 0;
+    uint32_t sleepTimerDeadlineMs_ = 0;
+    bool sleepTimerArmed_ = false;
+    ScreensaverMode standbyActiveScreensaverMode_ = ScreensaverMode::Life;
+    // Flick momentum for the preview browse scroll.
+    bool browseMomentumActive_ = false;
+    int32_t browseMomentumPermillePerS_ = 0;
+    uint32_t browseMomentumLastMs_ = 0;
     FooterMetricMode footerMetricMode_ = FooterMetricMode::Percentage;
     BatteryLabelMode batteryLabelMode_ = BatteryLabelMode::Percent;
     ScreensaverMode screensaverMode_ = ScreensaverMode::Life;

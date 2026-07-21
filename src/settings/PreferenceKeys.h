@@ -34,6 +34,7 @@ constexpr const char *kPrefChapterLabelRsvp = "ch_lbl_rsvp";
 constexpr const char *kPrefChapterLabelScroll = "ch_lbl_scroll";
 constexpr const char *kPrefReaderFontSize = "font_size";
 constexpr const char *kPrefReaderTypeface = "typeface";
+constexpr const char *kPrefUiSounds = "ui_snd";
 
 // Typography.
 constexpr const char *kPrefTypographyFocusHighlight = "type_hlt";

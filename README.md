@@ -231,12 +231,14 @@ reader screens, subtle handles at the top and bottom edges hint that those menus
 ### Reader Controls
 
 - Tap the rewind edge: left by default, or top-right when Reader controls is set to Rewind top-right. Rewinds to the start of the current sentence, or the previous sentence if you are already at the start.
+- Double-tap: toggle play/pause (not on the AMOLED 1.8).
+- Press and hold: start playback while paused, or pause at the end of the sentence while playing (not on the AMOLED 1.8).
 - Swipe left or right while paused: scrub through nearby text.
 - Tap after scrubbing: return to RSVP view.
-- Hold and move vertically in the scrub preview: browse through surrounding text.
+- Drag vertically in the scrub preview: the text follows your finger to browse surrounding words.
 - Swipe up while paused: increase WPM.
 - Swipe down while paused: decrease WPM.
-- Tap the bottom-right footer label: switch between progress, chapter time remaining, book time remaining, and battery display modes.
+- Tap the bottom-right footer label: switch between progress, chapter time remaining, book time remaining, and lifetime reading stats.
 - Tap the top-right battery label: switch between percentage, time remaining, and voltage.
 
 Pause behavior is configurable. In `Settings -> Word pacing`, choose whether reader shortcuts pause instantly or at the end of the sentence.

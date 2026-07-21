@@ -96,12 +96,19 @@ class DisplayManager {
   void renderTypographyPreview(const String &beforeText, const String &word, const String &afterText,
                                uint8_t fontSizeLevel, const String &title,
                                const String &line1 = "", const String &line2 = "");
+  // Optional progress track with chapter tick marks shown under the scroll view
+  // while browsing (permille positions along the book).
+  struct ProgressTicks {
+    std::vector<uint16_t> tickPermille;
+    uint16_t progressPermille = 0;
+  };
   void renderScrollView(const std::vector<ContextWord> &words, uint32_t contentToken,
                         size_t windowStartIndex, size_t currentWordIndex,
                         uint16_t scrollProgressPermille = 0, const String &chapterLabel = "",
                         uint8_t progressPercent = 0, const String &overlayText = "",
                         const String &footerStatusLabel = "",
-                        ReaderChrome chrome = ReaderChrome());
+                        ReaderChrome chrome = ReaderChrome(),
+                        const ProgressTicks *ticks = nullptr);
   void renderWordTickerView(const std::vector<ContextWord> &words, size_t currentWordIndex,
                             uint8_t fontSizeLevel, uint16_t motionPermille = 0,
                             const String &chapterLabel = "", uint8_t progressPercent = 0,

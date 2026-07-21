@@ -26,6 +26,10 @@ bool begin() { return BoardPlatform::Es8311BoardAudio::begin(gAudioContext); }
 
 bool beep() { return BoardPlatform::Es8311BoardAudio::beep(gAudioContext); }
 
+bool tone(uint32_t frequencyHz, uint32_t durationMs, int16_t amplitude) {
+  return BoardPlatform::Es8311BoardAudio::tone(gAudioContext, frequencyHz, durationMs, amplitude);
+}
+
 bool available() { return BoardPlatform::Es8311BoardAudio::available(gAudioContext); }
 
 }  // namespace Board::Audio
