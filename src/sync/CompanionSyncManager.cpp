@@ -65,27 +65,72 @@ const char kWebCompanionHtml[] PROGMEM = R"HTML(<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RSVP Nano Companion</title>
+<title>Eduardo's E-Reader</title>
 <style>
-:root{color-scheme:dark;--bg:#0c1110;--fg:#f5f1e8;--muted:#a7aaa0;--line:#2d3430;--card:#151b18;--accent:#78d5b1;--accentInk:#07110e;--accent2:#ff9b73;--soft:#1d2924}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top left,#18241f 0,#0c1110 38%);color:var(--fg);font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-header{position:sticky;top:0;z-index:2;background:rgba(12,17,16,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:14px 16px 10px}
-h1{font-size:1.15rem;margin:0 0 10px}.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-button,.button{border:1px solid var(--line);border-radius:8px;background:#111714;color:var(--fg);padding:9px 11px;font:inherit}
-button.primary,.button.primary{background:var(--accent);border-color:var(--accent);color:var(--accentInk);font-weight:700}button.danger{color:var(--accent2)}
-.tabs button{white-space:nowrap;padding:8px 6px}.tabs button.active{background:var(--fg);color:var(--bg)}
+:root{color-scheme:dark;--bg:#0c1110;--fg:#f5f1e8;--muted:#a7aaa0;--line:#2d3430;--card:#151b18;--accent:#78d5b1;--accentInk:#07110e;--danger:#ff9b73;--soft:#1d2924;--r-s:8px;--r-m:12px;--r-l:16px;--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.22)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top left,#18241f 0,#0c1110 38%);color:var(--fg);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:2;background:rgba(12,17,16,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:14px 16px 12px}
+h1{font-size:1.2rem;letter-spacing:-.02em;margin:0 0 12px;display:flex;align-items:center;gap:9px}
+h1 svg{color:var(--accent);flex:none}
+.tabs{display:flex;gap:4px;background:#111714;border:1px solid var(--line);border-radius:999px;padding:4px;max-width:540px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);border-radius:999px;padding:7px 6px;font:inherit;font-size:.9rem;white-space:nowrap;transition:background .15s ease-out,color .15s ease-out}
+.tabs button.active{background:var(--fg);color:var(--bg);font-weight:650}
+.tabs button:not(.active):hover{color:var(--fg)}
+button,.button{border:1px solid var(--line);border-radius:var(--r-s);background:#111714;color:var(--fg);padding:9px 12px;font:inherit;cursor:pointer;transition:background .15s ease-out,border-color .15s ease-out}
+button:hover{border-color:#3f4942}
+button.primary,.button.primary{background:var(--accent);border-color:var(--accent);color:var(--accentInk);font-weight:700}
+button.primary:hover{background:#8ee0c0}
+button.danger{color:var(--danger)}
 main{max-width:980px;margin:0 auto;padding:16px}.page{display:none}.page.active{display:block}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
-h2{font-size:1.05rem;margin:0 0 10px}h3{font-size:.95rem;margin:0 0 8px}.muted{color:var(--muted)}.status{padding:10px 12px;border-radius:8px;background:var(--soft);margin-bottom:12px}
-label{display:block;font-weight:650;margin:10px 0 5px}input,textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit;padding:9px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+h2{font-size:1rem;letter-spacing:-.01em;margin:0 0 10px}h3{font-size:.95rem;margin:0 0 8px}.muted{color:var(--muted)}
+.status{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--r-s);background:var(--soft);margin-bottom:14px;font-size:.92rem}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+.status.err::before{background:var(--danger)}
+label{display:block;font-weight:600;font-size:.88rem;margin:12px 0 5px}
+input,textarea,select{width:100%;border:1px solid var(--line);border-radius:var(--r-s);background:var(--bg);color:var(--fg);font:inherit;padding:9px 10px;transition:border-color .15s ease-out}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 textarea{min-height:180px;resize:vertical}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.row button{flex:0 0 auto}
-.item{border-top:1px solid var(--line);padding:10px 0}.item:first-child{border-top:0}.item-title{font-weight:700}.item-meta{color:var(--muted);font-size:.9rem}
+.item{border-top:1px solid var(--line);padding:10px 0}.item:first-child{border-top:0}.item-title{font-weight:650}.item-meta{color:var(--muted);font-size:.88rem;font-variant-numeric:tabular-nums}
 ul{padding-left:20px}code{background:var(--soft);border-radius:4px;padding:1px 4px}
+#lock{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;background:rgba(7,11,10,.72);backdrop-filter:blur(10px)}
+#lock.open{display:flex}
+.lock-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--shadow);padding:26px 24px;width:min(320px,92vw);text-align:center}
+.lock-card h2{margin-bottom:4px}
+.lock-sub{color:var(--muted);font-size:.9rem;margin:0 0 16px}
+.dots{display:flex;justify-content:center;gap:10px;margin-bottom:18px}
+.dots span{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line);transition:background .15s ease-out,border-color .15s ease-out}
+.dots span.on{background:var(--accent);border-color:var(--accent)}
+.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:8px;justify-content:center}
+.pad button{border-radius:var(--r-m);display:flex;align-items:center;justify-content:center;padding:0}
+.pad button svg{width:26px;height:26px}
+.pad .u{grid-area:1/2}.pad .l{grid-area:2/1}.pad .r{grid-area:2/3}.pad .d{grid-area:3/2}
+.pad .c{grid-area:2/2;border:0;background:transparent;color:var(--muted);font-size:.8rem}
+.lock-err{color:var(--danger);font-size:.88rem;min-height:1.2em;margin:12px 0 0}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.lock-card.no{animation:shake .3s ease-out}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
+<div id="lock" role="dialog" aria-modal="true" aria-label="Unlock">
+<div class="lock-card" id="lockCard">
+<h2>Locked</h2>
+<p class="lock-sub">Enter your swipe combo</p>
+<div class="dots" id="lockDots"><span></span><span></span><span></span><span></span></div>
+<div class="pad">
+<button class="u" data-dir="U" aria-label="Up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+<button class="l" data-dir="L" aria-label="Left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+<button class="c" id="lockClear">clear</button>
+<button class="r" data-dir="R" aria-label="Right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+<button class="d" data-dir="D" aria-label="Down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+</div>
+<p class="lock-err" id="lockError"></p>
+</div>
+</div>
 <header>
-<h1>RSVP Nano Companion</h1>
+<h1><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>Eduardo&#39;s E-Reader</h1>
 <nav class="tabs">
 <button data-tab="books" class="active">Books</button>
 <button data-tab="articles">Articles</button>
@@ -178,7 +223,8 @@ ul{padding-left:20px}code{background:var(--soft);border-radius:4px;padding:1px 4
 <section id="help" class="page">
 <div class="card"><h2>How to use this web companion</h2>
 <ul>
-<li>Open Companion sync on the reader, join the <code>RSVP-Nano</code> Wi-Fi network, then open this page.</li>
+<li>Open Companion sync on the reader. With home Wi-Fi saved, the reader joins your network and this page is at the URL it shows (also <code>http://ereader.local</code>). Otherwise join the <code>RSVP-Nano</code> Wi-Fi network it hosts.</li>
+<li>If a passcode is set on the reader, enter the same swipe combo here (arrow keys work too).</li>
 <li>Use Books for prepared book files and Articles for article drafts, article uploads, and synced articles.</li>
 <li>For best book conversion, use the hosted web converter/flasher first. This page is the wireless upload and settings companion, not the full conversion engine.</li>
 <li><code>.txt</code> and <code>.epub</code> uploads are accepted, but EPUB conversion is handled on the device when opened.</li>
@@ -190,15 +236,15 @@ ul{padding-left:20px}code{background:var(--soft);border-radius:4px;padding:1px 4
 </main>
 <script>
 const $=id=>document.getElementById(id);let settings=null;
-function status(msg){$('status').textContent=msg}
-async function api(path,opts){const r=await fetch(path,opts);const t=await r.text();let j={};try{j=t?JSON.parse(t):{}}catch(e){throw new Error(t||'Bad response')}if(!r.ok||j.ok===false)throw new Error(j.error||r.statusText);return j}
+function status(msg){const s=$('status');s.textContent=msg;s.classList.toggle('err',/problem|failed|first\.|aborted|wrong|unlock/i.test(msg))}
+async function api(path,opts){const r=await fetch(path,opts);if(r.status===401){showLock();throw new Error('Unlock required')}const t=await r.text();let j={};try{j=t?JSON.parse(t):{}}catch(e){throw new Error(t||'Bad response')}if(!r.ok||j.ok===false)throw new Error(j.error||r.statusText);return j}
 function bytes(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB'}
 function safeName(s){return (s||'article').replace(/[^a-z0-9._ -]+/gi,'-').replace(/\s+/g,' ').trim().slice(0,72)||'article'}
 function escRsvp(s){return (s||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim()}
 function articleFile(){const title=$('articleTitle').value.trim()||'Untitled Article';const author=$('articleAuthor').value.trim();const body=escRsvp($('articleBody').value);let out='@rsvp 1\n@title '+title+'\n';if(author)out+='@author '+author+'\n';out+='@para\n'+body+'\n';return {name:safeName(title)+'.rsvp',blob:new Blob([out],{type:'text/plain'})}}
 function html(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderList(id,items){$(id).innerHTML=items.length?items.map(b=>`<div class="item"><div class="item-title">${html(b.title||b.name)}</div><div class="item-meta">${html([b.author,b.name,bytes(b.bytes),b.progressPercent!=null?b.progressPercent+'% read':null].filter(Boolean).join(' - '))}</div><p><button class="danger" data-delete="${html(encodeURIComponent(b.name))}">Delete</button></p></div>`).join(''):'<span class="muted">Nothing here yet.</span>';document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>delBook(decodeURIComponent(b.dataset.delete)))}
-async function refresh(){try{const info=await api('/api/info');$('infoBox').innerHTML=`${info.name}<br><span class="muted">${info.mode} - ${info.networkSsid||''}</span><br>Pairing code: <strong>${info.pairingCode}</strong>`;const data=await api('/api/books');renderList('booksList',data.books.filter(b=>b.category!=='article'&&!String(b.name).startsWith('articles/')));renderList('articlesList',data.books.filter(b=>b.category==='article'||String(b.name).startsWith('articles/')));status('Connected to RSVP Nano.')}catch(e){status('Connection problem: '+e.message)}}
+async function refresh(){try{const info=await api('/api/info');$('infoBox').innerHTML=`${html(info.name)}<br><span class="muted">${info.mode==='station'?'Home network':'Access point'}${info.networkSsid?' - '+html(info.networkSsid):''}</span>`;const data=await api('/api/books');renderList('booksList',data.books.filter(b=>b.category!=='article'&&!String(b.name).startsWith('articles/')));renderList('articlesList',data.books.filter(b=>b.category==='article'||String(b.name).startsWith('articles/')));status('Connected to the reader.')}catch(e){status('Connection problem: '+e.message)}}
 async function delBook(name){if(!confirm('Delete '+name+'?'))return;try{await api('/api/books?name='+encodeURIComponent(name),{method:'DELETE'});await refresh();status('Deleted '+name)}catch(e){status('Delete failed: '+e.message)}}
 async function uploadBlob(blob,name,category){const fd=new FormData();fd.append('file',blob,name);await api('/api/books?name='+encodeURIComponent(name)+'&category='+encodeURIComponent(category),{method:'POST',body:fd})}
 async function uploadPicked(inputId,category){const f=$(inputId).files[0];if(!f){status('Choose a file first.');return}try{await uploadBlob(f,f.name,category);$(inputId).value='';await refresh();status('Uploaded '+f.name)}catch(e){status('Upload failed: '+e.message)}}
@@ -220,7 +266,18 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.que
 $('wpm').oninput=()=>{setVal('wpm',snapWpm(val('wpm')));updateLabels()};
 ['longWordMs','complexWordMs','punctuationMs','brightnessIndex','fontSizeIndex','tracking','anchorPercent','guideWidth','guideGap'].forEach(id=>$(id).oninput=updateLabels);
 $('refreshBooksButton').onclick=refresh;$('refreshArticlesButton').onclick=refresh;$('uploadBookButton').onclick=()=>uploadPicked('bookFileInput','book');$('uploadArticleButton').onclick=()=>uploadPicked('articleFileInput','article');$('syncArticleButton').onclick=syncArticle;$('saveDraftButton').onclick=saveDraft;$('saveSettingsButton').onclick=saveSettings;$('saveWifiButton').onclick=saveWifi;$('forgetWifiButton').onclick=forgetWifi;$('saveRssButton').onclick=saveRss;$('reloadRssButton').onclick=loadRss;
-loadDraft();refresh();
+let lockCombo='';
+function showLock(){$('lock').classList.add('open')}
+function hideLock(){$('lock').classList.remove('open')}
+function drawDots(){document.querySelectorAll('#lockDots span').forEach((s,i)=>s.classList.toggle('on',i<lockCombo.length))}
+async function tryUnlock(){const code=lockCombo;lockCombo='';try{await api('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});drawDots();$('lockError').textContent='';hideLock();boot()}catch(e){drawDots();$('lockError').textContent='Wrong combo, try again';const c=$('lockCard');c.classList.remove('no');void c.offsetWidth;c.classList.add('no')}}
+function pressDir(d){if(lockCombo.length>=4)return;lockCombo+=d;drawDots();$('lockError').textContent='';if(lockCombo.length===4)tryUnlock()}
+document.querySelectorAll('.pad [data-dir]').forEach(b=>b.onclick=()=>pressDir(b.dataset.dir));
+$('lockClear').onclick=()=>{lockCombo='';drawDots();$('lockError').textContent=''};
+document.addEventListener('keydown',e=>{if(!$('lock').classList.contains('open'))return;const m={ArrowUp:'U',ArrowDown:'D',ArrowLeft:'L',ArrowRight:'R'};if(m[e.key]){e.preventDefault();pressDir(m[e.key])}});
+function boot(){loadDraft();refresh()}
+async function gate(){try{const info=await api('/api/info');if(info.authRequired&&!info.authorized){status('Unlock required.');showLock();return}boot()}catch(e){status('Connection problem: '+e.message)}}
+gate();
 </script>
 </body>
 </html>)HTML";
@@ -538,7 +595,8 @@ bool CompanionSyncManager::begin(const Config &config) {
   }
 
   instance_ = this;
-  pairingCode_ = String(static_cast<uint32_t>(esp_random()) % 900000UL + 100000UL);
+  passcode_ = config.passcode;
+  sessionToken_ = "";
   statusLine1_ = "Starting sync";
   statusLine2_ = "Preparing Wi-Fi";
   preferences_.begin(kPrefsNamespace, false);
@@ -564,8 +622,8 @@ bool CompanionSyncManager::begin(const Config &config) {
   active_ = true;
   statusLine1_ = networkSsid_;
   statusLine2_ = baseUrl();
-  Serial.printf("[sync] ready ssid=%s url=%s pairing=%s\n", networkSsid_.c_str(), baseUrl().c_str(),
-                pairingCode_.c_str());
+  Serial.printf("[sync] ready ssid=%s url=%s auth=%s\n", networkSsid_.c_str(), baseUrl().c_str(),
+                passcode_.isEmpty() ? "open" : "passcode");
   return true;
 }
 
@@ -591,6 +649,8 @@ void CompanionSyncManager::end() {
   active_ = false;
   statusLine1_ = "Idle";
   statusLine2_ = "";
+  sessionToken_ = "";
+  passcode_ = "";
   instance_ = nullptr;
 }
 
@@ -613,6 +673,12 @@ String CompanionSyncManager::baseUrl() const {
 void CompanionSyncManager::handleInfoStatic() {
   if (instance_ != nullptr) {
     instance_->handleInfo();
+  }
+}
+
+void CompanionSyncManager::handleAuthStatic() {
+  if (instance_ != nullptr) {
+    instance_->handleAuth();
   }
 }
 
@@ -714,8 +780,14 @@ bool CompanionSyncManager::startAccessPoint() {
 }
 
 bool CompanionSyncManager::startServer() {
+  // Session cookies arrive in the Cookie header; WebServer only stores headers
+  // it was asked to collect.
+  static const char *kCollectedHeaders[] = {"Cookie"};
+  server_.collectHeaders(kCollectedHeaders, 1);
+
   server_.on("/", HTTP_GET, handleRootStatic);
   server_.on("/api/info", HTTP_GET, handleInfoStatic);
+  server_.on("/api/auth", HTTP_POST, handleAuthStatic);
   server_.on("/api/books", HTTP_GET, handleBooksListStatic);
   server_.on("/api/books", HTTP_DELETE, handleBookDeleteStatic);
   server_.on("/api/books", HTTP_POST, handleBooksStatic, handleBookUploadStatic);
@@ -747,13 +819,59 @@ void CompanionSyncManager::stopServer() {
   serverStarted_ = false;
 }
 
+bool CompanionSyncManager::clientAuthorized() {
+  if (passcode_.isEmpty()) {
+    return true;
+  }
+  if (sessionToken_.isEmpty()) {
+    return false;
+  }
+  const String cookies = server_.header("Cookie");
+  return cookies.indexOf("sync_auth=" + sessionToken_) >= 0;
+}
+
+bool CompanionSyncManager::requireAuthorized() {
+  if (clientAuthorized()) {
+    return true;
+  }
+  server_.send(401, "application/json", "{\"ok\":false,\"error\":\"Unauthorized\"}");
+  return false;
+}
+
+void CompanionSyncManager::handleAuth() {
+  if (passcode_.isEmpty()) {
+    server_.send(200, "application/json", "{\"ok\":true}");
+    return;
+  }
+
+  String submitted;
+  readJsonString(server_.arg("plain"), "code", submitted);
+  submitted.toUpperCase();
+
+  if (submitted.isEmpty() || submitted != passcode_) {
+    delay(700);  // Throttle brute-force attempts against the short combo.
+    server_.send(403, "application/json", "{\"ok\":false,\"error\":\"Wrong combo\"}");
+    return;
+  }
+
+  char token[33];
+  for (int chunk = 0; chunk < 4; ++chunk) {
+    snprintf(token + chunk * 8, 9, "%08lx", static_cast<unsigned long>(esp_random()));
+  }
+  sessionToken_ = token;
+  server_.sendHeader("Set-Cookie",
+                     "sync_auth=" + sessionToken_ + "; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly");
+  server_.send(200, "application/json", "{\"ok\":true}");
+}
+
 void CompanionSyncManager::handleInfo() {
   const String mode = networkMode_ == NetworkMode::Station ? "station" : "access_point";
-  const String body = String("{") + "\"name\":\"RSVP Nano\"," +
+  const String body = String("{") + "\"name\":\"Eduardo's E-Reader\"," +
                       "\"mode\":\"" + mode + "\"," +
                       "\"baseUrl\":\"" + jsonEscape(baseUrl()) + "\"," +
                       "\"networkSsid\":\"" + jsonEscape(networkSsid_) + "\"," +
-                      "\"pairingCode\":\"" + pairingCode_ + "\"," +
+                      "\"authRequired\":" + (passcode_.isEmpty() ? "false" : "true") + "," +
+                      "\"authorized\":" + (clientAuthorized() ? "true" : "false") + "," +
                       "\"uploadPath\":\"/api/books\"" + "}";
   server_.send(200, "application/json", body);
 }
@@ -764,6 +882,10 @@ void CompanionSyncManager::handleRoot() {
 }
 
 void CompanionSyncManager::handleBooksList() {
+  if (!requireAuthorized()) {
+    return;
+  }
+
   String body;
   body.reserve(1024);
   body += "{\"books\":[";
@@ -842,6 +964,9 @@ void CompanionSyncManager::handleBooksList() {
 }
 
 void CompanionSyncManager::handleSettings() {
+  if (!requireAuthorized()) {
+    return;
+  }
   if (server_.method() == HTTP_GET) {
     server_.send(200, "application/json", settingsJson());
     return;
@@ -864,6 +989,10 @@ void CompanionSyncManager::handleSettings() {
 }
 
 void CompanionSyncManager::handleWifi() {
+  if (!requireAuthorized()) {
+    return;
+  }
+
   if (server_.method() == HTTP_GET) {
     server_.send(200, "application/json", wifiJson());
     return;
@@ -891,6 +1020,10 @@ void CompanionSyncManager::handleWifi() {
 }
 
 void CompanionSyncManager::handleRssFeeds() {
+  if (!requireAuthorized()) {
+    return;
+  }
+
   if (server_.method() == HTTP_GET) {
     server_.send(200, "application/json", rssFeedsJson());
     return;
@@ -923,6 +1056,9 @@ void CompanionSyncManager::handleBooks() {
 }
 
 void CompanionSyncManager::handleBookDelete() {
+  if (!requireAuthorized()) {
+    return;
+  }
   String path;
   const String id = server_.arg("id");
   if (!id.isEmpty()) {
@@ -956,6 +1092,9 @@ void CompanionSyncManager::handleBookDelete() {
 }
 
 void CompanionSyncManager::handleBookPosition() {
+  if (!requireAuthorized()) {
+    return;
+  }
   const String body = server_.arg("plain");
   if (body.length() > 512) {
     server_.send(413, "application/json", "{\"ok\":false,\"error\":\"Position payload too large\"}");
@@ -1017,6 +1156,12 @@ void CompanionSyncManager::handleBookUpload() {
   HTTPUpload &upload = server_.upload();
 
   if (upload.status == UPLOAD_FILE_START) {
+    if (!clientAuthorized()) {
+      // Refuse before any bytes touch the SD card; the completion handler
+      // reports the error to the client.
+      uploadError_ = "Unauthorized";
+      return;
+    }
     String filename = sanitizeFilename(server_.arg("name"));
     if (filename.isEmpty()) {
       filename = sanitizeFilename(upload.filename);

@@ -10,6 +10,9 @@ class CompanionSyncManager {
   struct Config {
     String wifiSsid;
     String wifiPassword;
+    // Device passcode combo (e.g. "UDLR"). When set, web clients must submit
+    // it once to receive a session cookie; when empty, no auth is required.
+    String passcode;
   };
 
   bool begin(const Config &config);
@@ -33,6 +36,7 @@ class CompanionSyncManager {
   };
 
   static void handleInfoStatic();
+  static void handleAuthStatic();
   static void handleRootStatic();
   static void handleBooksListStatic();
   static void handleSettingsStatic();
@@ -48,6 +52,9 @@ class CompanionSyncManager {
   bool startAccessPoint();
   bool startServer();
   void stopServer();
+  bool clientAuthorized();
+  bool requireAuthorized();
+  void handleAuth();
   void handleInfo();
   void handleRoot();
   void handleBooksList();
@@ -90,7 +97,8 @@ class CompanionSyncManager {
   String uploadFinalPath_;
   String uploadTmpPath_;
   String uploadError_;
-  String pairingCode_;
+  String passcode_;
+  String sessionToken_;
   String networkSsid_;
   Preferences preferences_;
   String statusLine1_ = "Idle";

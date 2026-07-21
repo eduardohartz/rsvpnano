@@ -5165,6 +5165,7 @@ void App::enterCompanionSync(uint32_t nowMs) {
     CompanionSyncManager::Config syncConfig;
     syncConfig.wifiSsid = wifiConfig.wifiSsid;
     syncConfig.wifiPassword = wifiConfig.wifiPassword;
+    syncConfig.passcode = passcode_;
 
     if (!companionSync_.begin(syncConfig)) {
         Serial.println("[app] companion sync failed");
