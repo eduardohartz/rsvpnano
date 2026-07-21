@@ -308,12 +308,12 @@ namespace {
     constexpr const char* kPrefPasscode = "passcd";
     constexpr const char* kPrefUnlockToBook = "unlk_book";
     constexpr size_t kPasscodeLength = 4;
-    constexpr size_t kVolumeLevelCount = 4;
-    constexpr const char* kVolumeLevelLabels[kVolumeLevelCount] = {"Low", "Medium", "High", "Max"};
+    constexpr size_t kVolumeLevelCount = 5;
+    constexpr const char* kVolumeLevelLabels[kVolumeLevelCount] = {"Extra low", "Low", "Medium", "High", "Max"};
     // Perceived loudness is logarithmic: steps must be ~10 dB apart to sound
     // clearly different, so the scale is exponential (percent of base amplitude).
-    // High keeps the original tuning; Low is ~-20 dB from it.
-    constexpr int32_t kVolumeLevelPercent[kVolumeLevelCount] = {10, 33, 100, 250};
+    // High keeps the original tuning; each step down is roughly -10 dB.
+    constexpr int32_t kVolumeLevelPercent[kVolumeLevelCount] = {4, 10, 33, 100, 250};
     constexpr const char* kWelcomeTitle = "Eduardo's E-Reader";
     constexpr uint32_t kSyncExitHoldMs = 1200;
     constexpr const char* kPrefStatWords = "st_words";

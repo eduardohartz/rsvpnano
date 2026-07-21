@@ -615,7 +615,7 @@ private:
     bool readerChapterVisibleWhilePlaying_ = false;
     bool readerProgressVisibleWhilePlaying_ = false;
     bool uiSoundsEnabled_ = true;
-    uint8_t uiVolumeIndex_ = 1;
+    uint8_t uiVolumeIndex_ = 2;
     // Boot welcome / passcode lock / home screen flow.
     bool bootWelcomeShown_ = false;
     String passcode_;
