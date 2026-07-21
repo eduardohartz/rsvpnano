@@ -310,8 +310,10 @@ namespace {
     constexpr size_t kPasscodeLength = 4;
     constexpr size_t kVolumeLevelCount = 4;
     constexpr const char* kVolumeLevelLabels[kVolumeLevelCount] = {"Low", "Medium", "High", "Max"};
-    // Amplitude multipliers per level, in quarters (Medium keeps the base level).
-    constexpr int32_t kVolumeLevelQuarters[kVolumeLevelCount] = {2, 4, 7, 10};
+    // Perceived loudness is logarithmic: steps must be ~10 dB apart to sound
+    // clearly different, so the scale is exponential (percent of base amplitude).
+    // High keeps the original tuning; Low is ~-20 dB from it.
+    constexpr int32_t kVolumeLevelPercent[kVolumeLevelCount] = {10, 33, 100, 250};
     constexpr const char* kWelcomeTitle = "Eduardo's E-Reader";
     constexpr uint32_t kSyncExitHoldMs = 1200;
     constexpr const char* kPrefStatWords = "st_words";
@@ -7106,7 +7108,9 @@ String App::focusTimerCountsLabel() const {
 }
 
 void App::playFocusTimerCompletionCue() {
-    if (Board::Audio::beep()) {
+    // Deliberately ignores the sounds on/off toggle (it's an alarm), but honors
+    // the volume level.
+    if (Board::Audio::tone(1320, 120, scaledToneAmplitude(12000))) {
         return;
     }
 
@@ -7115,8 +7119,8 @@ void App::playFocusTimerCompletionCue() {
 
 int16_t App::scaledToneAmplitude(int16_t baseAmplitude) const {
     const int32_t scaled =
-        (static_cast<int32_t>(baseAmplitude) * kVolumeLevelQuarters[uiVolumeIndex_ % kVolumeLevelCount]) / 4;
-    return static_cast<int16_t>(std::min<int32_t>(scaled, 28000));
+        (static_cast<int32_t>(baseAmplitude) * kVolumeLevelPercent[uiVolumeIndex_ % kVolumeLevelCount]) / 100;
+    return static_cast<int16_t>(std::clamp<int32_t>(scaled, 1, 28000));
 }
 
 void App::playUiSound(UiSound sound) {
